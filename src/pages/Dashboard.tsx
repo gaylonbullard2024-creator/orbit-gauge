@@ -4,7 +4,6 @@ import {
   useLatestWeeklyReport,
   useFearGreedHistory,
   useBtcPriceHistory,
-  useMacroHistory,
   useSnapshotHistory,
 } from '@/hooks/useDashboard';
 import { CycleGauge } from '@/components/dashboard/CycleGauge';
