@@ -18,12 +18,19 @@ Deno.serve(async (req) => {
 
   try {
     const today = new Date().toISOString().split("T")[0];
+    const cgApiKey = Deno.env.get("COINGECKO_API_KEY");
 
     // 1. Fetch BTC price from CoinGecko
+    const cgHeaders: Record<string, string> = { "Accept": "application/json" };
+    if (cgApiKey) {
+      cgHeaders["x-cg-demo-api-key"] = cgApiKey;
+    }
+
     const cgRes = await fetch(
-      "https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=usd&days=1400&interval=daily"
+      "https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=usd&days=1400&interval=daily",
+      { headers: cgHeaders }
     );
-    if (!cgRes.ok) throw new Error(`CoinGecko error: ${cgRes.status}`);
+    if (!cgRes.ok) throw new Error(`CoinGecko error: ${cgRes.status} ${await cgRes.text()}`);
     const cgData = await cgRes.json();
     const prices: [number, number][] = cgData.prices;
 
