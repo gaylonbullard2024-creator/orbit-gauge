@@ -1,5 +1,12 @@
 import { useAuth } from '@/lib/auth';
-import { useLatestSnapshot, useLatestWeeklyReport } from '@/hooks/useDashboard';
+import {
+  useLatestSnapshot,
+  useLatestWeeklyReport,
+  useFearGreedHistory,
+  useBtcPriceHistory,
+  useMacroHistory,
+  useSnapshotHistory,
+} from '@/hooks/useDashboard';
 import { CycleGauge } from '@/components/dashboard/CycleGauge';
 import { IndicatorCard } from '@/components/dashboard/IndicatorCard';
 import { MacroPanel } from '@/components/dashboard/MacroPanel';
@@ -7,17 +14,37 @@ import { WeeklyCommentary } from '@/components/dashboard/WeeklyCommentary';
 import { Button } from '@/components/ui/button';
 import { getStatusLabel, getStatusColor, getPhaseColor, mapPhaseToStrategy } from '@/lib/scoring';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useMemo } from 'react';
 
 export default function Dashboard() {
   const { user, signOut } = useAuth();
   const { data: snapshot, isLoading } = useLatestSnapshot();
   const { data: report } = useLatestWeeklyReport();
+  const { data: fgHistory } = useFearGreedHistory();
+  const { data: btcHistory } = useBtcPriceHistory();
+  const { data: macroHistory } = useMacroHistory();
+  const { data: snapHistory } = useSnapshotHistory();
 
   const hasMvrv = snapshot?.mvrv_score != null;
   const maxScore = hasMvrv ? 20 : 16;
   const totalScore = snapshot?.cycle_total_score ?? 0;
   const phase = snapshot?.cycle_phase ?? 'Bull Trend';
   const strategy = snapshot?.strategy_signal ?? mapPhaseToStrategy(phase);
+
+  // Derive 200W MA history and Rainbow history from snapshots
+  const maHistory = useMemo(
+    () => (snapHistory ?? [])
+      .filter((s) => s.ma_200w_value != null)
+      .map((s) => ({ date: s.date, value: Number(s.ma_200w_value) })),
+    [snapHistory]
+  );
+
+  const rainbowHistory = useMemo(
+    () => (snapHistory ?? [])
+      .filter((s) => s.rainbow_score != null)
+      .map((s) => ({ date: s.date, value: s.rainbow_score! })),
+    [snapHistory]
+  );
 
   function getMacroRegime(score: number | null): string {
     if (score == null) return 'Neutral';
@@ -66,6 +93,9 @@ export default function Dashboard() {
         <section>
           <h2 className="text-sm font-medium uppercase tracking-widest text-muted-foreground mb-4">
             Core Indicators
+            <span className="ml-2 text-[10px] text-muted-foreground/50 normal-case tracking-normal">
+              Click a card to expand chart
+            </span>
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
             {isLoading ? (
@@ -80,6 +110,8 @@ export default function Dashboard() {
                   status={getStatusLabel(snapshot?.fear_greed_score ?? 2)}
                   statusColor={getStatusColor(snapshot?.fear_greed_score ?? 2)}
                   icon="😱"
+                  history={fgHistory}
+                  chartLabel="Sentiment Score"
                 />
                 <IndicatorCard
                   title="MVRV Z-Score"
@@ -99,6 +131,9 @@ export default function Dashboard() {
                   status={getStatusLabel(snapshot?.ma_200w_score ?? 2)}
                   statusColor={getStatusColor(snapshot?.ma_200w_score ?? 2)}
                   icon="📈"
+                  history={maHistory}
+                  chartLabel="200W MA ($)"
+                  formatValue={(v) => `$${v.toLocaleString()}`}
                 />
                 <IndicatorCard
                   title="Rainbow Model"
@@ -108,6 +143,8 @@ export default function Dashboard() {
                   status={snapshot?.rainbow_band ?? 'N/A'}
                   statusColor={getPhaseColor(snapshot?.cycle_phase ?? 'Bull Trend')}
                   icon="🌈"
+                  history={rainbowHistory}
+                  chartLabel="Rainbow Score"
                 />
                 <IndicatorCard
                   title="Macro / DXY"
@@ -117,6 +154,9 @@ export default function Dashboard() {
                   status={getMacroRegime(snapshot?.macro_score ?? null)}
                   statusColor={getStatusColor(snapshot?.macro_score ?? 2)}
                   icon="🌐"
+                  history={macroHistory}
+                  chartLabel="DXY Index"
+                  formatValue={(v) => v.toFixed(2)}
                 />
               </>
             )}
