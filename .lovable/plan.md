@@ -1,69 +1,159 @@
 
 
-## Bitcoin Cycle Dashboard MVP
+# Dashboard v2 Upgrade Plan
 
-A subscriber-only daily Bitcoin market dashboard that pulls data once per day, computes proprietary signals, and renders an institutional-grade investor tool.
+## Overview
+A comprehensive upgrade to make the dashboard feel institutional, actionable, and alive — transforming raw data into clear investor signals.
 
-### 1. Authentication & Access Control
-- Login/signup pages for subscribers
-- All dashboard content gated behind authentication
-- Stripe integration for $999 subscription (can add later)
+---
 
-### 2. Database (Lovable Cloud / Postgres)
-Six tables storing daily snapshots from day one:
-- **btc_daily_prices** — CoinGecko daily BTC closes
-- **fear_greed_daily** — Alternative.me sentiment scores
-- **macro_series_daily** — FRED DXY/dollar data
-- **onchain_metrics_daily** — Placeholder for Glassnode MVRV later
-- **dashboard_snapshots** — Daily computed gauge scores + all indicator values
-- **weekly_reports** — Weekly commentary + summary payloads
+## 1. Hero Cycle Gauge Redesign
+**Current:** Small gauge with score/phase/strategy text below.
+**New:** Large full-width hero speedometer dominating the top of the page.
+- Bigger SVG gauge (wider arc, thicker bands)
+- Score prominently centered inside the gauge (e.g., "11/16")
+- Phase badge below gauge
+- Clear action text: "Hold / Accumulate on dips"
+- Week-over-week score change arrow (e.g., "↑1 from last week")
 
-### 3. Daily Data Pipeline (Edge Functions)
-One scheduled job (daily ~6 AM ET):
-1. Fetch BTC price from CoinGecko
-2. Fetch Fear & Greed from Alternative.me
-3. Fetch DXY from FRED
-4. Compute 200-week moving average (1400-day rolling avg)
-5. Compute rainbow band position (log regression bands)
-6. Score each indicator (0–4 scale per your rules)
-7. Calculate Cycle Gauge total score → map to phase
-8. Save snapshot to database
+**File:** `src/components/dashboard/CycleGauge.tsx`
 
-### 4. Read API Endpoints
-- `GET /dashboard/latest` — today's full snapshot
-- `GET /dashboard/history` — historical gauge scores
-- `GET /indicators/{name}` — individual indicator + history
-- `GET /reports/latest-weekly` — most recent weekly report
+---
 
-### 5. Dashboard UI — Four Sections
+## 2. Weekly Summary Card (New Component)
+Placed immediately after the hero gauge, before indicator cards.
+- "This Week's Summary" header
+- Current phase badge + signal strength
+- 2-3 auto-generated bullet insights (derived from snapshot comparison)
+- Key change highlight (e.g., "Sentiment improved from Fear to Neutral")
 
-**Section 1: Bitcoin Cycle Gauge (hero)**
-- Large semi-circular dial with 5 color-coded zones (Deep Value → Cycle Top Risk)
-- Animated needle showing current position
-- Current score, phase label, and strategy recommendation
-- Score breakdown tiles below the gauge
+**New file:** `src/components/dashboard/WeeklySummaryCard.tsx`
 
-**Section 2: Core Indicator Cards**
-- 5 horizontal cards: Fear & Greed, MVRV (placeholder), 200W MA, Rainbow, Macro
-- Each shows: current reading, status label, score contribution
-- Expandable to reveal historical chart
+---
 
-**Section 3: Macro Environment Panel**
-- DXY/dollar strength trend
-- Macro regime label (Supportive / Neutral / Restrictive)
+## 3. Week-over-Week Change Indicators
+Fetch the previous day's snapshot (or last week's) alongside the latest.
+- Each indicator card shows delta: `48 → 55 ↑` with green/red coloring
+- Score change shown as small badge
+- Gauge shows overall score change
 
-**Section 4: Weekly Commentary**
-- Rendered markdown commentary (market summary, key developments, strategy)
-- Admin editor for writing/updating the weekly note
+**Files:** `src/hooks/useDashboard.ts` (add `usePreviousSnapshot` hook), `src/components/dashboard/IndicatorCard.tsx`, `src/pages/Dashboard.tsx`
 
-### 6. Design
-- Will match your existing company website branding (please share URL)
-- Fallback: dark theme with Bitcoin orange accents, clean typography
-- Mobile-responsive: sections stack vertically
+---
 
-### 7. What's NOT in MVP
-- No live tick data or trading features
-- No Glassnode MVRV (schema ready, add when budget approved)
-- No AI predictions, derivatives, or social scraping
-- No intraday alerts or push notifications
+## 4. Signal Strength / Confidence Indicator
+Calculate based on indicator agreement:
+- **High** — 4+ of 5 indicators agree on direction
+- **Medium** — 3 of 5 agree
+- **Low** — mixed signals
+
+Displayed as a badge on the hero gauge and weekly summary card.
+
+**File:** `src/lib/scoring.ts` (new function), displayed in `CycleGauge.tsx`
+
+---
+
+## 5. Indicator Tooltips
+Add an "i" icon (Lucide `Info`) next to each indicator title.
+On hover, show a one-line explanation:
+- Fear & Greed: "Measures market sentiment (0-100)"
+- MVRV Ratio: "Market value vs realized value — detects over/undervaluation"
+- 200W MA: "Long-term trend support level"
+- Rainbow: "Logarithmic price band model"
+- Macro/DXY: "Dollar strength — lower = better for BTC"
+
+Uses existing Radix tooltip component.
+
+**File:** `src/components/dashboard/IndicatorCard.tsx`
+
+---
+
+## 6. Historical Cycle Score Timeline
+New chart section showing cycle score over time (from `dashboard_snapshots`).
+- X-axis: time, Y-axis: cycle score (0-20)
+- Background color bands for each phase zone
+- Annotated markers for historical tops/bottoms if data supports it
+
+**New file:** `src/components/dashboard/CycleTimeline.tsx`
+
+---
+
+## 7. "What Changed This Week" Section
+Auto-generated from comparing current vs previous snapshot:
+- "Sentiment moved from Fear to Neutral"
+- "Price crossed above 200W MA"
+- "MVRV entered overheated zone"
+
+Logic compares phase transitions, score changes, and threshold crossings.
+
+**New file:** `src/components/dashboard/WeeklyChanges.tsx`
+
+---
+
+## 8. Market Phase History List
+Simple chronological list derived from snapshots:
+- Groups by month, shows phase for each month
+- Format: "Jan 2026 → Accumulation", "Feb 2026 → Bull Trend"
+
+**New file:** `src/components/dashboard/PhaseHistory.tsx`
+
+---
+
+## 9. Partial Public Dashboard / Paywall Gate
+**Scoping needed** — will define which sections are visible publicly vs gated:
+- Option A: Show gauge + phase publicly, lock indicators + commentary
+- Option B: Show everything blurred with CTA overlay
+- This will be planned separately after confirming the approach with you.
+
+---
+
+## 10. UI Refinements (Already Mostly Done)
+The dark institutional theme (charcoal/black, white text, orange accents) is already in place. Minor polish:
+- Ensure all new components use the existing design tokens
+- Consistent card styling across new sections
+
+---
+
+## Updated Dashboard Layout Order
+```text
+┌─────────────────────────────────┐
+│  Header                         │
+├─────────────────────────────────┤
+│  Hero Cycle Gauge (enlarged)    │
+│  Score + Phase + Action + Δ     │
+│  Signal Strength badge          │
+├─────────────────────────────────┤
+│  Weekly Summary Card            │
+│  Phase · Key change · Bullets   │
+├─────────────────────────────────┤
+│  Core Indicators (5 cards)      │
+│  Each with Δ + tooltip          │
+├─────────────────────────────────┤
+│  Cycle Score Timeline Chart     │
+├─────────────────────────────────┤
+│  BTC Price vs 200W MA           │
+├─────────────────────────────────┤
+│  What Changed This Week         │
+├─────────────────────────────────┤
+│  Macro Environment              │
+├─────────────────────────────────┤
+│  Phase History List             │
+├─────────────────────────────────┤
+│  Weekly Commentary (full)       │
+├─────────────────────────────────┤
+│  Footer                         │
+└─────────────────────────────────┘
+```
+
+## Database Changes
+- **None required.** All new features derive from existing `dashboard_snapshots` data. The `usePreviousSnapshot` hook just fetches the second-most-recent row.
+
+## Implementation Order
+1. Hero gauge redesign + signal strength
+2. Previous snapshot hook + delta indicators
+3. Weekly summary card + "What Changed"
+4. Indicator tooltips
+5. Cycle timeline chart
+6. Phase history list
+7. Paywall gate (scoping discussion first)
 
