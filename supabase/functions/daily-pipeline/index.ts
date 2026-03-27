@@ -132,14 +132,38 @@ Deno.serve(async (req) => {
       return 4;
     }
 
+    // 6b. Calculate MVRV ratio (market cap / avg market cap)
+    let mvrvValue: number | null = null;
+    let mvrvScore = 0;
+    if (latestMcap && marketCaps.length > 30) {
+      const avgMcap = marketCaps.reduce((sum, m) => sum + m[1], 0) / marketCaps.length;
+      mvrvValue = latestMcap / avgMcap;
+      // Score: <0.8 deep value, 0.8-1.0 accumulate, 1.0-1.2 growth, 1.2-1.5 overheated, >1.5 bubble
+      if (mvrvValue < 0.8) mvrvScore = 0;
+      else if (mvrvValue < 1.0) mvrvScore = 1;
+      else if (mvrvValue < 1.2) mvrvScore = 2;
+      else if (mvrvValue < 1.5) mvrvScore = 3;
+      else mvrvScore = 4;
+    }
+
+    function scoreMacro(v: number | null) {
+      if (v == null) return 2;
+      if (v < 95) return 0;
+      if (v < 100) return 1;
+      if (v < 105) return 2;
+      if (v < 110) return 3;
+      return 4;
+    }
+
     const fgScore = scoreFG(fgValue);
     const maScore = scoreTrend(latestPrice, ma200w);
     const rbScore = scoreRB(rainbowBand);
     const macroScore = scoreMacro(dxyValue);
-    const totalScore = fgScore + maScore + rbScore + macroScore;
+    const hasMvrv = mvrvValue != null;
+    const totalScore = fgScore + maScore + rbScore + macroScore + (hasMvrv ? mvrvScore : 0);
 
     // Map to phase
-    const maxScore = 16;
+    const maxScore = hasMvrv ? 20 : 16;
     const norm = (totalScore / maxScore) * 20;
     let phase: string;
     if (norm <= 5) phase = "Deep Value";
