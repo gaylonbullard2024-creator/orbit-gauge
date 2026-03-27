@@ -27,10 +27,15 @@ export function PriceTrendChart({ priceHistory, maHistory }: PriceTrendChartProp
   const [logScale, setLogScale] = useState(false);
   const [range, setRange] = useState<string>('1Y');
 
-  if (!priceHistory.length) return null;
-
   const cutoffDate = useMemo(() => {
     const r = RANGES.find((r) => r.label === range);
+    if (!r || r.days === 0) return null;
+    const d = new Date();
+    d.setDate(d.getDate() - r.days);
+    return d.toISOString().slice(0, 10);
+  }, [range]);
+
+  if (!priceHistory.length) return null;
     if (!r || r.days === 0) return null;
     const d = new Date();
     d.setDate(d.getDate() - r.days);
