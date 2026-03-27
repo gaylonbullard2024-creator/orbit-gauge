@@ -25,6 +25,11 @@ export interface WeeklyReport {
   summary_markdown: string | null;
 }
 
+export interface HistoricalPoint {
+  date: string;
+  value: number;
+}
+
 export function useLatestSnapshot() {
   return useQuery({
     queryKey: ['dashboard-snapshot-latest'],
@@ -39,6 +44,79 @@ export function useLatestSnapshot() {
       return data;
     },
     staleTime: 5 * 60 * 1000,
+  });
+}
+
+export function useSnapshotHistory(days = 365) {
+  return useQuery({
+    queryKey: ['dashboard-snapshot-history', days],
+    queryFn: async (): Promise<DashboardSnapshot[]> => {
+      const since = new Date();
+      since.setDate(since.getDate() - days);
+      const { data, error } = await supabase
+        .from('dashboard_snapshots')
+        .select('*')
+        .gte('date', since.toISOString().split('T')[0])
+        .order('date', { ascending: true });
+      if (error) throw error;
+      return data ?? [];
+    },
+    staleTime: 10 * 60 * 1000,
+  });
+}
+
+export function useFearGreedHistory(days = 365) {
+  return useQuery({
+    queryKey: ['fear-greed-history', days],
+    queryFn: async (): Promise<HistoricalPoint[]> => {
+      const since = new Date();
+      since.setDate(since.getDate() - days);
+      const { data, error } = await supabase
+        .from('fear_greed_daily')
+        .select('date, value')
+        .gte('date', since.toISOString().split('T')[0])
+        .order('date', { ascending: true });
+      if (error) throw error;
+      return (data ?? []).map((d) => ({ date: d.date, value: d.value }));
+    },
+    staleTime: 10 * 60 * 1000,
+  });
+}
+
+export function useBtcPriceHistory(days = 365) {
+  return useQuery({
+    queryKey: ['btc-price-history', days],
+    queryFn: async (): Promise<HistoricalPoint[]> => {
+      const since = new Date();
+      since.setDate(since.getDate() - days);
+      const { data, error } = await supabase
+        .from('btc_daily_prices')
+        .select('date, close_usd')
+        .gte('date', since.toISOString().split('T')[0])
+        .order('date', { ascending: true });
+      if (error) throw error;
+      return (data ?? []).map((d) => ({ date: d.date, value: Number(d.close_usd) }));
+    },
+    staleTime: 10 * 60 * 1000,
+  });
+}
+
+export function useMacroHistory(days = 365) {
+  return useQuery({
+    queryKey: ['macro-history', days],
+    queryFn: async (): Promise<HistoricalPoint[]> => {
+      const since = new Date();
+      since.setDate(since.getDate() - days);
+      const { data, error } = await supabase
+        .from('macro_series_daily')
+        .select('date, value')
+        .eq('series_id', 'DTWEXBGS')
+        .gte('date', since.toISOString().split('T')[0])
+        .order('date', { ascending: true });
+      if (error) throw error;
+      return (data ?? []).map((d) => ({ date: d.date, value: Number(d.value) }));
+    },
+    staleTime: 10 * 60 * 1000,
   });
 }
 
