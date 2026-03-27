@@ -160,6 +160,7 @@ export default function Dashboard() {
                   previousValue={prevSnapshot?.fear_greed_value}
                   previousScore={prevSnapshot?.fear_greed_score}
                 />
+                <IndicatorCard
                   title="MVRV Ratio"
                   value={snapshot?.mvrv_value ? Number(snapshot.mvrv_value).toFixed(2) : '—'}
                   score={snapshot?.mvrv_score ?? 0}
