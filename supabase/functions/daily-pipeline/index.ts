@@ -21,17 +21,15 @@ Deno.serve(async (req) => {
     const cgApiKey = Deno.env.get("COINGECKO_API_KEY");
 
     // 1. Fetch BTC price from CoinGecko
-    // CoinGecko: try pro API first, fall back to demo
+    // CoinGecko API
     const cgHeaders: Record<string, string> = { "Accept": "application/json" };
     let cgUrl = "https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=usd&days=1400&interval=daily";
+    
+    console.log("CoinGecko API key present:", !!cgApiKey, "length:", cgApiKey?.length ?? 0);
+    
     if (cgApiKey) {
-      // Pro API uses different base URL and header
-      if (cgApiKey.startsWith("CG-")) {
-        cgHeaders["x-cg-pro-api-key"] = cgApiKey;
-        cgUrl = "https://pro-api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=usd&days=1400&interval=daily";
-      } else {
-        cgHeaders["x-cg-demo-api-key"] = cgApiKey;
-      }
+      // Demo keys use x-cg-demo-api-key header
+      cgHeaders["x-cg-demo-api-key"] = cgApiKey;
     }
 
     const cgRes = await fetch(cgUrl, { headers: cgHeaders });
