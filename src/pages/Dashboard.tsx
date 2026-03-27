@@ -10,6 +10,7 @@ import {
 import { CycleGauge } from '@/components/dashboard/CycleGauge';
 import { IndicatorCard } from '@/components/dashboard/IndicatorCard';
 import { MacroPanel } from '@/components/dashboard/MacroPanel';
+import { PriceTrendChart } from '@/components/dashboard/PriceTrendChart';
 import { WeeklyCommentary } from '@/components/dashboard/WeeklyCommentary';
 import { Button } from '@/components/ui/button';
 import { getStatusLabel, getStatusColor, getPhaseColor, mapPhaseToStrategy } from '@/lib/scoring';
@@ -163,7 +164,12 @@ export default function Dashboard() {
           </div>
         </section>
 
-        {/* Section 3: Macro Environment */}
+        {/* Section 3: BTC Price vs 200W MA */}
+        <section>
+          <PriceTrendChart priceHistory={btcHistory ?? []} maHistory={maHistory} />
+        </section>
+
+        {/* Section 4: Macro Environment */}
         <section>
           <MacroPanel
             dxyValue={snapshot?.macro_value ? Number(snapshot.macro_value) : null}
