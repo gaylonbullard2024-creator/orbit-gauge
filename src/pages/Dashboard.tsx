@@ -164,7 +164,12 @@ export default function Dashboard() {
           </div>
         </section>
 
-        {/* Section 3: Macro Environment */}
+        {/* Section 3: BTC Price vs 200W MA */}
+        <section>
+          <PriceTrendChart priceHistory={btcHistory ?? []} maHistory={maHistory} />
+        </section>
+
+        {/* Section 4: Macro Environment */}
         <section>
           <MacroPanel
             dxyValue={snapshot?.macro_value ? Number(snapshot.macro_value) : null}
