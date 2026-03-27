@@ -72,7 +72,7 @@ export function CycleGauge({ score, maxScore, phase, strategy }: CycleGaugeProps
       {/* Score & Phase */}
       <div className="text-center space-y-2">
         <div className="flex items-center justify-center gap-3">
-          <span className="font-mono text-4xl font-bold" style={{ color: activePhase.color }}>
+          <span className="font-mono text-3xl sm:text-4xl font-bold" style={{ color: activePhase.color }}>
             {score}
           </span>
           <span className="text-muted-foreground text-lg">/ {maxScore}</span>

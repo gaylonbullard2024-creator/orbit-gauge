@@ -70,12 +70,12 @@ export default function Dashboard() {
     <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="sticky top-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
-          <div className="flex items-center gap-3">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10">
-              <span className="text-lg font-bold text-primary">₿</span>
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-3 py-2 sm:px-4 sm:py-3">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <div className="flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-lg bg-primary/10">
+              <span className="text-base sm:text-lg font-bold text-primary">₿</span>
             </div>
-            <h1 className="text-lg font-semibold">MCG Bitcoin Cycle Dashboard</h1>
+            <h1 className="text-sm sm:text-lg font-semibold">MCG Bitcoin Cycle Dashboard</h1>
           </div>
           <div className="flex items-center gap-3">
             <span className="text-xs text-muted-foreground hidden sm:block">{user?.email}</span>
@@ -86,9 +86,9 @@ export default function Dashboard() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-6xl px-4 py-8 space-y-8">
+      <main className="mx-auto max-w-6xl px-3 py-4 space-y-4 sm:px-4 sm:py-8 sm:space-y-8">
         {/* Section 1: Cycle Gauge */}
-        <section className="rounded-2xl border border-border/50 bg-card/50 p-6 md:p-10">
+        <section className="rounded-2xl border border-border/50 bg-card/50 p-4 sm:p-6 md:p-10">
           <h2 className="text-center text-sm font-medium uppercase tracking-widest text-muted-foreground mb-6">
             Bitcoin Market Signal
           </h2>
@@ -110,7 +110,7 @@ export default function Dashboard() {
               Click a card to expand chart
             </span>
           </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
             {isLoading ? (
               Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-44" />)
             ) : (
