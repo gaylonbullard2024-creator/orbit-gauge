@@ -45,10 +45,10 @@ export function scoreMacro(value: number, previousValue?: number): number {
 export function mapScoreToPhase(score: number, hasMvrv: boolean): string {
   const max = hasMvrv ? 20 : 16;
   const normalized = (score / max) * 20;
-  if (normalized <= 5) return 'Deep Value';
-  if (normalized <= 9) return 'Accumulation';
-  if (normalized <= 13) return 'Bull Trend';
-  if (normalized <= 17) return 'Overheated';
+  if (normalized <= 4) return 'Deep Value';
+  if (normalized <= 7) return 'Accumulation';
+  if (normalized <= 10) return 'Bull Market';
+  if (normalized <= 13) return 'Overheated';
   return 'Cycle Top Risk';
 }
 
@@ -56,7 +56,7 @@ export function mapPhaseToStrategy(phase: string): string {
   const strategies: Record<string, string> = {
     'Deep Value': 'Strong accumulation zone. Historically the best time to build positions.',
     'Accumulation': 'Gradually accumulate Bitcoin. Add on pullbacks during fear-driven volatility.',
-    'Bull Trend': 'Hold core BTC allocation and accumulate on pullbacks.',
+    'Bull Market': 'Hold core BTC allocation and accumulate on pullbacks.',
     'Overheated': 'Reduce risk. Consider taking profits on leveraged positions.',
     'Cycle Top Risk': 'Extreme caution. Consider trimming positions or hedging.',
   };
@@ -67,9 +67,9 @@ export function mapPhaseToAction(phase: string): string {
   const actions: Record<string, string> = {
     'Deep Value': 'Strong Buy — Maximum Accumulation',
     'Accumulation': 'Buy — Accumulate on Dips',
-    'Bull Trend': 'Hold — Accumulate on Pullbacks',
+    'Bull Market': 'Hold — Maintain Exposure',
     'Overheated': 'Reduce — Take Partial Profits',
-    'Cycle Top Risk': 'Sell — Trim Positions & Hedge',
+    'Cycle Top Risk': 'Exit — Hedge Positions',
   };
   return actions[phase] ?? 'Hold & Monitor';
 }
@@ -78,7 +78,7 @@ export function getPhaseColor(phase: string): string {
   const colors: Record<string, string> = {
     'Deep Value': 'hsl(220, 70%, 45%)',
     'Accumulation': 'hsl(152, 60%, 40%)',
-    'Bull Trend': 'hsl(45, 90%, 50%)',
+    'Bull Market': 'hsl(45, 90%, 50%)',
     'Overheated': 'hsl(28, 90%, 55%)',
     'Cycle Top Risk': 'hsl(0, 72%, 51%)',
   };
