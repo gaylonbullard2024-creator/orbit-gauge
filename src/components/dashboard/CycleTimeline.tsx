@@ -16,11 +16,11 @@ interface CycleTimelineProps {
 }
 
 const PHASE_BANDS = [
-  { y1: 0, y2: 5, color: 'hsl(220, 70%, 45%)', label: 'Deep Value' },
-  { y1: 5, y2: 9, color: 'hsl(152, 60%, 40%)', label: 'Accumulation' },
-  { y1: 9, y2: 13, color: 'hsl(45, 90%, 50%)', label: 'Bull Trend' },
-  { y1: 13, y2: 17, color: 'hsl(28, 90%, 55%)', label: 'Overheated' },
-  { y1: 17, y2: 20, color: 'hsl(0, 72%, 51%)', label: 'Cycle Top' },
+  { y1: 0, y2: 4, color: 'hsl(220, 70%, 45%)', label: 'Deep Value' },
+  { y1: 4, y2: 7, color: 'hsl(152, 60%, 40%)', label: 'Accumulation' },
+  { y1: 7, y2: 10, color: 'hsl(45, 90%, 50%)', label: 'Bull Market' },
+  { y1: 10, y2: 13, color: 'hsl(28, 90%, 55%)', label: 'Overheated' },
+  { y1: 13, y2: 20, color: 'hsl(0, 72%, 51%)', label: 'Cycle Top' },
 ];
 
 export function CycleTimeline({ snapshots }: CycleTimelineProps) {

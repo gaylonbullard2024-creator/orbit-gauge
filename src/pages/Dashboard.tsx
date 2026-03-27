@@ -11,6 +11,7 @@ import { CycleGauge } from '@/components/dashboard/CycleGauge';
 import { IndicatorCard } from '@/components/dashboard/IndicatorCard';
 import { FearGreedGauge } from '@/components/dashboard/FearGreedGauge';
 import { MacroPanel } from '@/components/dashboard/MacroPanel';
+import { RainbowChart } from '@/components/dashboard/RainbowChart';
 import { PriceTrendChart } from '@/components/dashboard/PriceTrendChart';
 import { WeeklyCommentary } from '@/components/dashboard/WeeklyCommentary';
 import { WeeklySummaryCard } from '@/components/dashboard/WeeklySummaryCard';
@@ -237,7 +238,10 @@ export default function Dashboard() {
           <PriceTrendChart priceHistory={btcHistory ?? []} maHistory={maHistory} />
         </section>
 
-        {/* What Changed */}
+        {/* Rainbow Chart */}
+        <section>
+          <RainbowChart priceHistory={btcHistory ?? []} currentBand={snapshot?.rainbow_band ?? null} />
+        </section>
         {!isLoading && snapshot && prevSnapshot && (
           <section>
             <WeeklyChanges snapshot={snapshot} previousSnapshot={prevSnapshot} />
