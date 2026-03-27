@@ -79,9 +79,9 @@ export function FearGreedGauge({
   }, [value]);
 
   const cx = 150;
-  const cy = 140;
-  const rOuter = 120;
-  const rInner = 80;
+  const cy = 145;
+  const rOuter = 125;
+  const rInner = 70;
 
   return (
     <Card className="border-border/50 bg-card/80 transition-all hover:border-primary/30 col-span-1 sm:col-span-2">
@@ -132,13 +132,24 @@ export function FearGreedGauge({
                   <stop offset="75%" stopColor="hsl(100, 60%, 50%)" />
                   <stop offset="100%" stopColor="hsl(130, 65%, 45%)" />
                 </linearGradient>
+                {/* Glow filter */}
+                <filter id="fg-glow" x="-20%" y="-20%" width="140%" height="140%">
+                  <feGaussianBlur stdDeviation="6" result="blur" />
+                  <feComposite in="SourceGraphic" in2="blur" operator="over" />
+                </filter>
               </defs>
 
+              {/* Glow layer */}
+              <path
+                d={arcPath(cx, cy, rOuter + 4, rInner - 4, -180, 0)}
+                fill="url(#fg-arc-gradient)"
+                opacity={0.25}
+                filter="url(#fg-glow)"
+              />
               {/* Full gradient arc */}
               <path
                 d={arcPath(cx, cy, rOuter, rInner, -180, 0)}
                 fill="url(#fg-arc-gradient)"
-                opacity={0.9}
               />
 
               {/* Subtle segment lines */}
