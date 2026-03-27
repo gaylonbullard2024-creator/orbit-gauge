@@ -9,7 +9,14 @@ import {
   YAxis,
 } from 'recharts';
 import type { HistoricalPoint } from '@/hooks/useDashboard';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
+
+const RANGES = [
+  { label: '3M', days: 90 },
+  { label: '6M', days: 180 },
+  { label: '1Y', days: 365 },
+  { label: 'All', days: 0 },
+] as const;
 
 interface PriceTrendChartProps {
   priceHistory: HistoricalPoint[];
@@ -18,16 +25,27 @@ interface PriceTrendChartProps {
 
 export function PriceTrendChart({ priceHistory, maHistory }: PriceTrendChartProps) {
   const [logScale, setLogScale] = useState(false);
+  const [range, setRange] = useState<string>('1Y');
+
+  const cutoffDate = useMemo(() => {
+    const r = RANGES.find((r) => r.label === range);
+    if (!r || r.days === 0) return null;
+    const d = new Date();
+    d.setDate(d.getDate() - r.days);
+    return d.toISOString().slice(0, 10);
+  }, [range]);
 
   if (!priceHistory.length) return null;
 
-  // Merge price + MA data by date
+  // Merge price + MA data by date, filtered by range
   const maMap = new Map(maHistory.map((p) => [p.date, p.value]));
-  const merged = priceHistory.map((p) => ({
-    date: p.date,
-    price: p.value,
-    ma200w: maMap.get(p.date) ?? null,
-  }));
+  const merged = priceHistory
+    .filter((p) => !cutoffDate || p.date >= cutoffDate)
+    .map((p) => ({
+      date: p.date,
+      price: p.value,
+      ma200w: maMap.get(p.date) ?? null,
+    }));
 
   return (
     <Card className="border-border/50 bg-card/80">
@@ -35,16 +53,32 @@ export function PriceTrendChart({ priceHistory, maHistory }: PriceTrendChartProp
         <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
           <span className="text-lg">📈</span>
           BTC Price vs 200-Week Moving Average
-          <button
-            onClick={() => setLogScale((v) => !v)}
-            className={`ml-2 rounded-md border px-2 py-0.5 text-[10px] font-medium transition-colors ${
-              logScale
-                ? 'border-primary/50 bg-primary/10 text-primary'
-                : 'border-border bg-muted/50 text-muted-foreground hover:bg-muted'
-            }`}
-          >
-            {logScale ? 'LOG' : 'LIN'}
-          </button>
+          <div className="ml-2 flex items-center gap-1">
+            <button
+              onClick={() => setLogScale((v) => !v)}
+              className={`rounded-md border px-2 py-0.5 text-[10px] font-medium transition-colors ${
+                logScale
+                  ? 'border-primary/50 bg-primary/10 text-primary'
+                  : 'border-border bg-muted/50 text-muted-foreground hover:bg-muted'
+              }`}
+            >
+              {logScale ? 'LOG' : 'LIN'}
+            </button>
+            <span className="mx-1 h-3 w-px bg-border" />
+            {RANGES.map((r) => (
+              <button
+                key={r.label}
+                onClick={() => setRange(r.label)}
+                className={`rounded-md border px-2 py-0.5 text-[10px] font-medium transition-colors ${
+                  range === r.label
+                    ? 'border-primary/50 bg-primary/10 text-primary'
+                    : 'border-border bg-muted/50 text-muted-foreground hover:bg-muted'
+                }`}
+              >
+                {r.label}
+              </button>
+            ))}
+          </div>
           <span className="ml-auto flex items-center gap-3 text-[10px] font-normal">
             <span className="flex items-center gap-1">
               <span className="inline-block h-2 w-4 rounded-sm bg-primary" />
