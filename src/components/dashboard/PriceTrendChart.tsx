@@ -77,12 +77,14 @@ export function PriceTrendChart({ priceHistory, maHistory }: PriceTrendChartProp
               minTickGap={50}
             />
             <YAxis
+              scale={logScale ? 'log' : 'auto'}
+              domain={logScale ? ['auto', 'auto'] : ['dataMin', 'dataMax']}
               tick={{ fontSize: 10, fill: 'hsl(215, 15%, 55%)' }}
               tickLine={false}
               axisLine={false}
               tickFormatter={(v: number) => `$${(v / 1000).toFixed(0)}k`}
-              domain={['dataMin', 'dataMax']}
               width={50}
+              allowDataOverflow
             />
             <Tooltip
               contentStyle={{
