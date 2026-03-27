@@ -9,6 +9,7 @@ import {
   YAxis,
 } from 'recharts';
 import type { HistoricalPoint } from '@/hooks/useDashboard';
+import { useState } from 'react';
 
 interface PriceTrendChartProps {
   priceHistory: HistoricalPoint[];
@@ -16,6 +17,8 @@ interface PriceTrendChartProps {
 }
 
 export function PriceTrendChart({ priceHistory, maHistory }: PriceTrendChartProps) {
+  const [logScale, setLogScale] = useState(false);
+
   if (!priceHistory.length) return null;
 
   // Merge price + MA data by date
