@@ -47,6 +47,23 @@ export function useLatestSnapshot() {
   });
 }
 
+export function usePreviousSnapshot() {
+  return useQuery({
+    queryKey: ['dashboard-snapshot-previous'],
+    queryFn: async (): Promise<DashboardSnapshot | null> => {
+      const { data, error } = await supabase
+        .from('dashboard_snapshots')
+        .select('*')
+        .order('date', { ascending: false })
+        .range(1, 1)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
 export function useSnapshotHistory(days = 365) {
   return useQuery({
     queryKey: ['dashboard-snapshot-history', days],

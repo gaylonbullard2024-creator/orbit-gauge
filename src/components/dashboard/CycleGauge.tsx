@@ -1,10 +1,14 @@
 import { useMemo } from 'react';
+import { Shield } from 'lucide-react';
 
 interface CycleGaugeProps {
   score: number;
   maxScore: number;
   phase: string;
   strategy: string;
+  action: string;
+  signalStrength: { level: string; color: string };
+  scoreDelta?: number | null;
 }
 
 const PHASES = [
@@ -15,7 +19,7 @@ const PHASES = [
   { label: 'Cycle Top Risk', color: 'hsl(0, 72%, 51%)', range: [17, 20] },
 ];
 
-export function CycleGauge({ score, maxScore, phase, strategy }: CycleGaugeProps) {
+export function CycleGauge({ score, maxScore, phase, strategy, action, signalStrength, scoreDelta }: CycleGaugeProps) {
   const needleAngle = useMemo(() => {
     const pct = Math.min(score / maxScore, 1);
     return -90 + pct * 180;
@@ -24,9 +28,9 @@ export function CycleGauge({ score, maxScore, phase, strategy }: CycleGaugeProps
   const activePhase = PHASES.find((p) => p.label === phase) ?? PHASES[2];
 
   return (
-    <div className="flex flex-col items-center gap-6">
-      {/* Gauge SVG */}
-      <div className="relative w-full max-w-md aspect-[2/1]">
+    <div className="flex flex-col items-center gap-4 sm:gap-6">
+      {/* Gauge SVG — large hero */}
+      <div className="relative w-full max-w-lg aspect-[2/1]">
         <svg viewBox="0 0 200 110" className="w-full h-full">
           {/* Background arcs */}
           {PHASES.map((p, i) => {
@@ -47,19 +51,26 @@ export function CycleGauge({ score, maxScore, phase, strategy }: CycleGaugeProps
                 d={`M ${x1} ${y1} A ${r} ${r} 0 0 1 ${x2} ${y2}`}
                 fill="none"
                 stroke={p.color}
-                strokeWidth="16"
+                strokeWidth="20"
                 strokeLinecap="butt"
-                opacity={p.label === phase ? 1 : 0.3}
+                opacity={p.label === phase ? 1 : 0.25}
               />
             );
           })}
+          {/* Score text inside gauge */}
+          <text x="100" y="78" textAnchor="middle" className="fill-foreground" style={{ fontSize: '22px', fontFamily: "'JetBrains Mono', monospace", fontWeight: 700 }}>
+            {score}
+          </text>
+          <text x="100" y="92" textAnchor="middle" className="fill-muted-foreground" style={{ fontSize: '10px', fontFamily: "'Inter', sans-serif" }}>
+            / {maxScore}
+          </text>
           {/* Needle */}
           <g transform={`rotate(${needleAngle}, 100, 100)`}>
             <line
               x1="100"
               y1="100"
               x2="100"
-              y2="28"
+              y2="24"
               stroke="hsl(var(--foreground))"
               strokeWidth="2.5"
               strokeLinecap="round"
@@ -69,21 +80,33 @@ export function CycleGauge({ score, maxScore, phase, strategy }: CycleGaugeProps
         </svg>
       </div>
 
-      {/* Score & Phase */}
-      <div className="text-center space-y-2">
-        <div className="flex items-center justify-center gap-3">
-          <span className="font-mono text-3xl sm:text-4xl font-bold" style={{ color: activePhase.color }}>
-            {score}
+      {/* Phase & Action */}
+      <div className="text-center space-y-3 w-full max-w-md">
+        <div className="flex items-center justify-center gap-3 flex-wrap">
+          <div
+            className="inline-block rounded-full px-4 py-1.5 text-sm font-semibold"
+            style={{ backgroundColor: activePhase.color + '22', color: activePhase.color }}
+          >
+            {phase}
+          </div>
+          {scoreDelta != null && scoreDelta !== 0 && (
+            <span className={`font-mono text-sm font-semibold ${scoreDelta > 0 ? 'text-[hsl(0,72%,51%)]' : 'text-[hsl(152,60%,40%)]'}`}>
+              {scoreDelta > 0 ? '↑' : '↓'}{Math.abs(scoreDelta)} from last
+            </span>
+          )}
+        </div>
+
+        {/* Action */}
+        <p className="text-base sm:text-lg font-semibold text-foreground">{action}</p>
+        <p className="text-sm text-muted-foreground">{strategy}</p>
+
+        {/* Signal Strength */}
+        <div className="flex items-center justify-center gap-1.5">
+          <Shield className="h-3.5 w-3.5" style={{ color: signalStrength.color }} />
+          <span className="text-xs font-medium" style={{ color: signalStrength.color }}>
+            Signal Strength: {signalStrength.level}
           </span>
-          <span className="text-muted-foreground text-lg">/ {maxScore}</span>
         </div>
-        <div
-          className="inline-block rounded-full px-4 py-1.5 text-sm font-semibold"
-          style={{ backgroundColor: activePhase.color + '22', color: activePhase.color }}
-        >
-          {phase}
-        </div>
-        <p className="text-muted-foreground text-sm max-w-md mx-auto">{strategy}</p>
       </div>
 
       {/* Phase legend */}

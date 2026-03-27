@@ -1,6 +1,7 @@
 import { useAuth } from '@/lib/auth';
 import {
   useLatestSnapshot,
+  usePreviousSnapshot,
   useLatestWeeklyReport,
   useFearGreedHistory,
   useBtcPriceHistory,
@@ -11,14 +12,27 @@ import { IndicatorCard } from '@/components/dashboard/IndicatorCard';
 import { MacroPanel } from '@/components/dashboard/MacroPanel';
 import { PriceTrendChart } from '@/components/dashboard/PriceTrendChart';
 import { WeeklyCommentary } from '@/components/dashboard/WeeklyCommentary';
+import { WeeklySummaryCard } from '@/components/dashboard/WeeklySummaryCard';
+import { CycleTimeline } from '@/components/dashboard/CycleTimeline';
+import { WeeklyChanges } from '@/components/dashboard/WeeklyChanges';
+import { PhaseHistory } from '@/components/dashboard/PhaseHistory';
 import { Button } from '@/components/ui/button';
-import { getStatusLabel, getStatusColor, getPhaseColor, mapPhaseToStrategy } from '@/lib/scoring';
+import {
+  getStatusLabel,
+  getStatusColor,
+  getPhaseColor,
+  mapPhaseToStrategy,
+  mapPhaseToAction,
+  calculateSignalStrength,
+  INDICATOR_TOOLTIPS,
+} from '@/lib/scoring';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useMemo } from 'react';
 
 export default function Dashboard() {
   const { user, signOut } = useAuth();
   const { data: snapshot, isLoading } = useLatestSnapshot();
+  const { data: prevSnapshot } = usePreviousSnapshot();
   const { data: report } = useLatestWeeklyReport();
   const { data: fgHistory } = useFearGreedHistory();
   const { data: btcHistory } = useBtcPriceHistory();
@@ -29,33 +43,39 @@ export default function Dashboard() {
   const totalScore = snapshot?.cycle_total_score ?? 0;
   const phase = snapshot?.cycle_phase ?? 'Bull Trend';
   const strategy = snapshot?.strategy_signal ?? mapPhaseToStrategy(phase);
+  const action = mapPhaseToAction(phase);
 
-  // Derive 200W MA history and Rainbow history from snapshots
+  const signalStrength = useMemo(
+    () =>
+      calculateSignalStrength([
+        snapshot?.fear_greed_score ?? null,
+        snapshot?.mvrv_score ?? null,
+        snapshot?.ma_200w_score ?? null,
+        snapshot?.rainbow_score ?? null,
+        snapshot?.macro_score ?? null,
+      ]),
+    [snapshot]
+  );
+
+  const scoreDelta = useMemo(() => {
+    if (snapshot?.cycle_total_score == null || prevSnapshot?.cycle_total_score == null) return null;
+    return snapshot.cycle_total_score - prevSnapshot.cycle_total_score;
+  }, [snapshot, prevSnapshot]);
+
   const maHistory = useMemo(
-    () => (snapHistory ?? [])
-      .filter((s) => s.ma_200w_value != null)
-      .map((s) => ({ date: s.date, value: Number(s.ma_200w_value) })),
+    () => (snapHistory ?? []).filter((s) => s.ma_200w_value != null).map((s) => ({ date: s.date, value: Number(s.ma_200w_value) })),
     [snapHistory]
   );
-
   const rainbowHistory = useMemo(
-    () => (snapHistory ?? [])
-      .filter((s) => s.rainbow_score != null)
-      .map((s) => ({ date: s.date, value: s.rainbow_score! })),
+    () => (snapHistory ?? []).filter((s) => s.rainbow_score != null).map((s) => ({ date: s.date, value: s.rainbow_score! })),
     [snapHistory]
   );
-
   const macroHistory = useMemo(
-    () => (snapHistory ?? [])
-      .filter((s) => s.macro_value != null)
-      .map((s) => ({ date: s.date, value: Number(s.macro_value) })),
+    () => (snapHistory ?? []).filter((s) => s.macro_value != null).map((s) => ({ date: s.date, value: Number(s.macro_value) })),
     [snapHistory]
   );
-
   const mvrvHistory = useMemo(
-    () => (snapHistory ?? [])
-      .filter((s) => s.mvrv_value != null)
-      .map((s) => ({ date: s.date, value: Number(s.mvrv_value) })),
+    () => (snapHistory ?? []).filter((s) => s.mvrv_value != null).map((s) => ({ date: s.date, value: Number(s.mvrv_value) })),
     [snapHistory]
   );
 
@@ -68,7 +88,6 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
       <header className="sticky top-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-3 py-2 sm:px-4 sm:py-3">
           <div className="flex items-center gap-2 sm:gap-3">
@@ -79,15 +98,13 @@ export default function Dashboard() {
           </div>
           <div className="flex items-center gap-3">
             <span className="text-xs text-muted-foreground hidden sm:block">{user?.email}</span>
-            <Button variant="ghost" size="sm" onClick={signOut}>
-              Sign Out
-            </Button>
+            <Button variant="ghost" size="sm" onClick={signOut}>Sign Out</Button>
           </div>
         </div>
       </header>
 
       <main className="mx-auto max-w-6xl px-3 py-4 space-y-4 sm:px-4 sm:py-8 sm:space-y-8">
-        {/* Section 1: Cycle Gauge */}
+        {/* Hero Cycle Gauge */}
         <section className="rounded-2xl border border-border/50 bg-card/50 p-4 sm:p-6 md:p-10">
           <h2 className="text-center text-sm font-medium uppercase tracking-widest text-muted-foreground mb-6">
             Bitcoin Market Signal
@@ -98,11 +115,30 @@ export default function Dashboard() {
               <Skeleton className="h-8 w-32" />
             </div>
           ) : (
-            <CycleGauge score={totalScore} maxScore={maxScore} phase={phase} strategy={strategy} />
+            <CycleGauge
+              score={totalScore}
+              maxScore={maxScore}
+              phase={phase}
+              strategy={strategy}
+              action={action}
+              signalStrength={signalStrength}
+              scoreDelta={scoreDelta}
+            />
           )}
         </section>
 
-        {/* Section 2: Core Indicator Cards */}
+        {/* Weekly Summary */}
+        {!isLoading && snapshot && (
+          <section>
+            <WeeklySummaryCard
+              snapshot={snapshot}
+              previousSnapshot={prevSnapshot ?? null}
+              signalStrength={signalStrength}
+            />
+          </section>
+        )}
+
+        {/* Core Indicators */}
         <section>
           <h2 className="text-sm font-medium uppercase tracking-widest text-muted-foreground mb-4">
             Core Indicators
@@ -125,6 +161,9 @@ export default function Dashboard() {
                   icon="😱"
                   history={fgHistory}
                   chartLabel="Sentiment Score"
+                  tooltip={INDICATOR_TOOLTIPS['Fear & Greed']}
+                  previousValue={prevSnapshot?.fear_greed_value}
+                  previousScore={prevSnapshot?.fear_greed_score}
                 />
                 <IndicatorCard
                   title="MVRV Ratio"
@@ -138,6 +177,9 @@ export default function Dashboard() {
                   history={mvrvHistory}
                   chartLabel="MVRV Ratio"
                   formatValue={(v) => v.toFixed(2)}
+                  tooltip={INDICATOR_TOOLTIPS['MVRV Ratio']}
+                  previousValue={prevSnapshot?.mvrv_value ? Number(prevSnapshot.mvrv_value).toFixed(2) : null}
+                  previousScore={prevSnapshot?.mvrv_score}
                 />
                 <IndicatorCard
                   title="200W Moving Avg"
@@ -150,6 +192,9 @@ export default function Dashboard() {
                   history={maHistory}
                   chartLabel="200W MA ($)"
                   formatValue={(v) => `$${v.toLocaleString()}`}
+                  tooltip={INDICATOR_TOOLTIPS['200W Moving Avg']}
+                  previousValue={prevSnapshot?.ma_200w_value ? `$${Number(prevSnapshot.ma_200w_value).toLocaleString()}` : null}
+                  previousScore={prevSnapshot?.ma_200w_score}
                 />
                 <IndicatorCard
                   title="Rainbow Model"
@@ -161,6 +206,9 @@ export default function Dashboard() {
                   icon="🌈"
                   history={rainbowHistory}
                   chartLabel="Rainbow Score"
+                  tooltip={INDICATOR_TOOLTIPS['Rainbow Model']}
+                  previousValue={prevSnapshot?.rainbow_band}
+                  previousScore={prevSnapshot?.rainbow_score}
                 />
                 <IndicatorCard
                   title="Macro / DXY"
@@ -173,18 +221,35 @@ export default function Dashboard() {
                   history={macroHistory}
                   chartLabel="DXY Index"
                   formatValue={(v) => v.toFixed(2)}
+                  tooltip={INDICATOR_TOOLTIPS['Macro / DXY']}
+                  previousValue={prevSnapshot?.macro_value ? Number(prevSnapshot.macro_value).toFixed(2) : null}
+                  previousScore={prevSnapshot?.macro_score}
                 />
               </>
             )}
           </div>
         </section>
 
-        {/* Section 3: BTC Price vs 200W MA */}
+        {/* Cycle Score Timeline */}
+        {snapHistory && snapHistory.length > 1 && (
+          <section>
+            <CycleTimeline snapshots={snapHistory} />
+          </section>
+        )}
+
+        {/* BTC Price vs 200W MA */}
         <section>
           <PriceTrendChart priceHistory={btcHistory ?? []} maHistory={maHistory} />
         </section>
 
-        {/* Section 4: Macro Environment */}
+        {/* What Changed */}
+        {!isLoading && snapshot && prevSnapshot && (
+          <section>
+            <WeeklyChanges snapshot={snapshot} previousSnapshot={prevSnapshot} />
+          </section>
+        )}
+
+        {/* Macro Environment */}
         <section>
           <MacroPanel
             dxyValue={snapshot?.macro_value ? Number(snapshot.macro_value) : null}
@@ -193,7 +258,14 @@ export default function Dashboard() {
           />
         </section>
 
-        {/* Section 4: Weekly Commentary */}
+        {/* Phase History */}
+        {snapHistory && snapHistory.length > 1 && (
+          <section>
+            <PhaseHistory snapshots={snapHistory} />
+          </section>
+        )}
+
+        {/* Weekly Commentary */}
         <section>
           <WeeklyCommentary
             headline={report?.headline ?? null}
@@ -202,7 +274,6 @@ export default function Dashboard() {
           />
         </section>
 
-        {/* Footer */}
         <footer className="text-center py-6 text-xs text-muted-foreground/50">
           <p>Data refreshed daily ~6 AM ET · Not financial advice</p>
           <p className="mt-1">© {new Date().getFullYear()} MCG · The Crypto Investors</p>
