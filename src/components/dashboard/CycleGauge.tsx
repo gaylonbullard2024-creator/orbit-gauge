@@ -13,10 +13,10 @@ interface CycleGaugeProps {
 
 const PHASES = [
   { label: 'Deep Value', color: 'hsl(220, 70%, 45%)', range: [0, 4] },
-  { label: 'Accumulation', color: 'hsl(152, 60%, 40%)', range: [5, 8] },
-  { label: 'Bull Trend', color: 'hsl(45, 90%, 50%)', range: [9, 12] },
-  { label: 'Overheated', color: 'hsl(28, 90%, 55%)', range: [13, 16] },
-  { label: 'Cycle Top Risk', color: 'hsl(0, 72%, 51%)', range: [17, 20] },
+  { label: 'Accumulation', color: 'hsl(152, 60%, 40%)', range: [5, 7] },
+  { label: 'Bull Market', color: 'hsl(45, 90%, 50%)', range: [8, 10] },
+  { label: 'Overheated', color: 'hsl(28, 90%, 55%)', range: [11, 13] },
+  { label: 'Cycle Top Risk', color: 'hsl(0, 72%, 51%)', range: [14, 20] },
 ];
 
 export function CycleGauge({ score, maxScore, phase, strategy, action, signalStrength, scoreDelta }: CycleGaugeProps) {
