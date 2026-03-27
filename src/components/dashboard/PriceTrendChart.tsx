@@ -35,6 +35,16 @@ export function PriceTrendChart({ priceHistory, maHistory }: PriceTrendChartProp
         <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
           <span className="text-lg">📈</span>
           BTC Price vs 200-Week Moving Average
+          <button
+            onClick={() => setLogScale((v) => !v)}
+            className={`ml-2 rounded-md border px-2 py-0.5 text-[10px] font-medium transition-colors ${
+              logScale
+                ? 'border-primary/50 bg-primary/10 text-primary'
+                : 'border-border bg-muted/50 text-muted-foreground hover:bg-muted'
+            }`}
+          >
+            {logScale ? 'LOG' : 'LIN'}
+          </button>
           <span className="ml-auto flex items-center gap-3 text-[10px] font-normal">
             <span className="flex items-center gap-1">
               <span className="inline-block h-2 w-4 rounded-sm bg-primary" />
