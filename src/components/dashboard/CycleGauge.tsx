@@ -26,6 +26,7 @@ export function CycleGauge({ score, maxScore, phase, strategy, action, signalStr
   }, [score, maxScore]);
 
   const activePhase = PHASES.find((p) => p.label === phase) ?? PHASES[2];
+  const safeSignalStrength = signalStrength ?? { level: 'Low', color: 'hsl(215, 15%, 55%)' };
 
   return (
     <div className="flex flex-col items-center gap-4 sm:gap-6">
