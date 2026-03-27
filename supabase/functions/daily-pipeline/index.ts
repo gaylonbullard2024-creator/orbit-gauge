@@ -186,6 +186,8 @@ Deno.serve(async (req) => {
       btc_close_usd: latestPrice,
       fear_greed_value: fgValue,
       fear_greed_score: fgScore,
+      mvrv_value: mvrvValue,
+      mvrv_score: mvrvScore,
       ma_200w_value: ma200w,
       ma_200w_score: maScore,
       rainbow_band: rainbowBand,
