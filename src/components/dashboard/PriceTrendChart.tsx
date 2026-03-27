@@ -9,7 +9,14 @@ import {
   YAxis,
 } from 'recharts';
 import type { HistoricalPoint } from '@/hooks/useDashboard';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
+
+const RANGES = [
+  { label: '3M', days: 90 },
+  { label: '6M', days: 180 },
+  { label: '1Y', days: 365 },
+  { label: 'All', days: 0 },
+] as const;
 
 interface PriceTrendChartProps {
   priceHistory: HistoricalPoint[];
@@ -18,16 +25,27 @@ interface PriceTrendChartProps {
 
 export function PriceTrendChart({ priceHistory, maHistory }: PriceTrendChartProps) {
   const [logScale, setLogScale] = useState(false);
+  const [range, setRange] = useState<string>('1Y');
 
   if (!priceHistory.length) return null;
 
-  // Merge price + MA data by date
+  const cutoffDate = useMemo(() => {
+    const r = RANGES.find((r) => r.label === range);
+    if (!r || r.days === 0) return null;
+    const d = new Date();
+    d.setDate(d.getDate() - r.days);
+    return d.toISOString().slice(0, 10);
+  }, [range]);
+
+  // Merge price + MA data by date, filtered by range
   const maMap = new Map(maHistory.map((p) => [p.date, p.value]));
-  const merged = priceHistory.map((p) => ({
-    date: p.date,
-    price: p.value,
-    ma200w: maMap.get(p.date) ?? null,
-  }));
+  const merged = priceHistory
+    .filter((p) => !cutoffDate || p.date >= cutoffDate)
+    .map((p) => ({
+      date: p.date,
+      price: p.value,
+      ma200w: maMap.get(p.date) ?? null,
+    }));
 
   return (
     <Card className="border-border/50 bg-card/80">
