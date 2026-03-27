@@ -50,10 +50,13 @@ export function PriceTrendChart({ priceHistory, maHistory }: PriceTrendChartProp
   return (
     <Card className="border-border/50 bg-card/80">
       <CardHeader className="pb-2">
-        <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-          <span className="text-lg">📈</span>
-          BTC Price vs 200-Week Moving Average
-          <div className="ml-2 flex items-center gap-1">
+        <div className="space-y-2">
+          <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+            <span className="text-lg">📈</span>
+            <span className="hidden sm:inline">BTC Price vs 200-Week Moving Average</span>
+            <span className="sm:hidden">BTC vs 200W MA</span>
+          </CardTitle>
+          <div className="flex flex-wrap items-center gap-1.5">
             <button
               onClick={() => setLogScale((v) => !v)}
               className={`rounded-md border px-2 py-0.5 text-[10px] font-medium transition-colors ${
@@ -64,7 +67,7 @@ export function PriceTrendChart({ priceHistory, maHistory }: PriceTrendChartProp
             >
               {logScale ? 'LOG' : 'LIN'}
             </button>
-            <span className="mx-1 h-3 w-px bg-border" />
+            <span className="mx-0.5 h-3 w-px bg-border" />
             {RANGES.map((r) => (
               <button
                 key={r.label}
@@ -78,21 +81,21 @@ export function PriceTrendChart({ priceHistory, maHistory }: PriceTrendChartProp
                 {r.label}
               </button>
             ))}
+            <span className="ml-auto flex items-center gap-3 text-[10px] font-normal">
+              <span className="flex items-center gap-1">
+                <span className="inline-block h-2 w-4 rounded-sm bg-primary" />
+                Price
+              </span>
+              <span className="flex items-center gap-1">
+                <span className="inline-block h-2 w-4 rounded-sm" style={{ backgroundColor: 'hsl(45, 90%, 55%)' }} />
+                200W MA
+              </span>
+            </span>
           </div>
-          <span className="ml-auto flex items-center gap-3 text-[10px] font-normal">
-            <span className="flex items-center gap-1">
-              <span className="inline-block h-2 w-4 rounded-sm bg-primary" />
-              Price
-            </span>
-            <span className="flex items-center gap-1">
-              <span className="inline-block h-2 w-4 rounded-sm" style={{ backgroundColor: 'hsl(45, 90%, 55%)' }} />
-              200W MA
-            </span>
-          </span>
-        </CardTitle>
+        </div>
       </CardHeader>
       <CardContent>
-        <ResponsiveContainer width="100%" height={280}>
+        <ResponsiveContainer width="100%" height={220} className="sm:!h-[280px]">
           <ComposedChart data={merged} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
             <defs>
               <linearGradient id="grad-price" x1="0" y1="0" x2="0" y2="1">

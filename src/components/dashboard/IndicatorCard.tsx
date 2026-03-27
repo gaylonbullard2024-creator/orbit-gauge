@@ -53,7 +53,7 @@ export function IndicatorCard({
       </CardHeader>
       <CardContent className="space-y-3">
         <div className="flex items-baseline gap-2">
-          <span className="font-mono text-2xl font-bold text-foreground">
+          <span className="font-mono text-xl sm:text-2xl font-bold text-foreground">
             {disabled ? '—' : value}
           </span>
           {subtitle && <span className="text-xs text-muted-foreground">{subtitle}</span>}
