@@ -238,7 +238,10 @@ export default function Dashboard() {
           <PriceTrendChart priceHistory={btcHistory ?? []} maHistory={maHistory} />
         </section>
 
-        {/* What Changed */}
+        {/* Rainbow Chart */}
+        <section>
+          <RainbowChart priceHistory={btcHistory ?? []} currentBand={snapshot?.rainbow_band ?? null} />
+        </section>
         {!isLoading && snapshot && prevSnapshot && (
           <section>
             <WeeklyChanges snapshot={snapshot} previousSnapshot={prevSnapshot} />
