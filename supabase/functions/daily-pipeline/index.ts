@@ -36,12 +36,15 @@ Deno.serve(async (req) => {
     if (!cgRes.ok) throw new Error(`CoinGecko error: ${cgRes.status} ${await cgRes.text()}`);
     const cgData = await cgRes.json();
     const prices: [number, number][] = cgData.prices;
+    const marketCaps: [number, number][] = cgData.market_caps ?? [];
 
-    // Store latest price
+    // Store latest price + market cap
     const latestPrice = prices[prices.length - 1][1];
+    const latestMcap = marketCaps.length > 0 ? marketCaps[marketCaps.length - 1][1] : null;
     await supabase.from("btc_daily_prices").upsert({
       date: today,
       close_usd: latestPrice,
+      market_cap_usd: latestMcap,
       source: "coingecko",
     }, { onConflict: "date" });
 
