@@ -1,6 +1,8 @@
 import { useState } from 'react';
+import { Info } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Area, AreaChart, ResponsiveContainer, Tooltip as RechartsTooltip, XAxis, YAxis } from 'recharts';
 import type { HistoricalPoint } from '@/hooks/useDashboard';
 
 interface IndicatorCardProps {
@@ -16,6 +18,9 @@ interface IndicatorCardProps {
   history?: HistoricalPoint[];
   chartLabel?: string;
   formatValue?: (v: number) => string;
+  tooltip?: string;
+  previousValue?: string | number | null;
+  previousScore?: number | null;
 }
 
 export function IndicatorCard({
@@ -31,9 +36,14 @@ export function IndicatorCard({
   history,
   chartLabel,
   formatValue,
+  tooltip,
+  previousValue,
+  previousScore,
 }: IndicatorCardProps) {
   const [expanded, setExpanded] = useState(false);
   const hasChart = !disabled && history && history.length > 1;
+
+  const scoreDelta = previousScore != null ? score - previousScore : null;
 
   return (
     <Card
@@ -41,7 +51,21 @@ export function IndicatorCard({
       onClick={() => hasChart && setExpanded(!expanded)}
     >
       <CardHeader className="flex flex-row items-center justify-between pb-2">
-        <CardTitle className="text-sm font-medium text-muted-foreground">{title}</CardTitle>
+        <div className="flex items-center gap-1.5">
+          <CardTitle className="text-sm font-medium text-muted-foreground">{title}</CardTitle>
+          {tooltip && (
+            <TooltipProvider delayDuration={200}>
+              <Tooltip>
+                <TooltipTrigger asChild onClick={(e) => e.stopPropagation()}>
+                  <Info className="h-3.5 w-3.5 text-muted-foreground/50 hover:text-muted-foreground cursor-help" />
+                </TooltipTrigger>
+                <TooltipContent side="top" className="max-w-[200px] text-xs">
+                  {tooltip}
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
+        </div>
         <div className="flex items-center gap-1">
           {hasChart && (
             <span className="text-[10px] text-muted-foreground/50">
@@ -56,6 +80,11 @@ export function IndicatorCard({
           <span className="font-mono text-xl sm:text-2xl font-bold text-foreground">
             {disabled ? '—' : value}
           </span>
+          {!disabled && previousValue != null && previousValue !== value && (
+            <span className="text-xs text-muted-foreground font-mono">
+              ← {previousValue}
+            </span>
+          )}
           {subtitle && <span className="text-xs text-muted-foreground">{subtitle}</span>}
         </div>
         <div className="flex items-center justify-between">
@@ -65,9 +94,16 @@ export function IndicatorCard({
           >
             {disabled ? 'Coming Soon' : status}
           </span>
-          <span className="font-mono text-xs text-muted-foreground">
-            {disabled ? '—' : score} / {maxScore}
-          </span>
+          <div className="flex items-center gap-1.5">
+            {scoreDelta != null && scoreDelta !== 0 && (
+              <span className={`font-mono text-[10px] font-semibold ${scoreDelta > 0 ? 'text-[hsl(0,72%,51%)]' : 'text-[hsl(152,60%,40%)]'}`}>
+                {scoreDelta > 0 ? '↑' : '↓'}{Math.abs(scoreDelta)}
+              </span>
+            )}
+            <span className="font-mono text-xs text-muted-foreground">
+              {disabled ? '—' : score} / {maxScore}
+            </span>
+          </div>
         </div>
         {/* Score bar */}
         <div className="h-1.5 w-full rounded-full bg-secondary">
@@ -107,7 +143,7 @@ export function IndicatorCard({
                   hide
                   domain={['dataMin', 'dataMax']}
                 />
-                <Tooltip
+                <RechartsTooltip
                   contentStyle={{
                     backgroundColor: 'hsl(220, 14%, 11%)',
                     border: '1px solid hsl(220, 12%, 18%)',
