@@ -10,6 +10,7 @@ import {
 import { CycleGauge } from '@/components/dashboard/CycleGauge';
 import { IndicatorCard } from '@/components/dashboard/IndicatorCard';
 import { MacroPanel } from '@/components/dashboard/MacroPanel';
+import { PriceTrendChart } from '@/components/dashboard/PriceTrendChart';
 import { WeeklyCommentary } from '@/components/dashboard/WeeklyCommentary';
 import { Button } from '@/components/ui/button';
 import { getStatusLabel, getStatusColor, getPhaseColor, mapPhaseToStrategy } from '@/lib/scoring';
