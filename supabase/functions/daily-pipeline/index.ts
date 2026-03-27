@@ -146,15 +146,6 @@ Deno.serve(async (req) => {
       else mvrvScore = 4;
     }
 
-    function scoreMacro(v: number | null) {
-      if (v == null) return 2;
-      if (v < 95) return 0;
-      if (v < 100) return 1;
-      if (v < 105) return 2;
-      if (v < 110) return 3;
-      return 4;
-    }
-
     const fgScore = scoreFG(fgValue);
     const maScore = scoreTrend(latestPrice, ma200w);
     const rbScore = scoreRB(rainbowBand);
