@@ -9,6 +9,7 @@ import {
 } from '@/hooks/useDashboard';
 import { CycleGauge } from '@/components/dashboard/CycleGauge';
 import { IndicatorCard } from '@/components/dashboard/IndicatorCard';
+import { FearGreedGauge } from '@/components/dashboard/FearGreedGauge';
 import { MacroPanel } from '@/components/dashboard/MacroPanel';
 import { PriceTrendChart } from '@/components/dashboard/PriceTrendChart';
 import { WeeklyCommentary } from '@/components/dashboard/WeeklyCommentary';
@@ -146,21 +147,15 @@ export default function Dashboard() {
               Click a card to expand chart
             </span>
           </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
             {isLoading ? (
               Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-44" />)
             ) : (
               <>
-                <IndicatorCard
-                  title="Fear & Greed"
+                <FearGreedGauge
                   value={snapshot?.fear_greed_value ?? 0}
                   score={snapshot?.fear_greed_score ?? 0}
-                  maxScore={4}
-                  status={getStatusLabel(snapshot?.fear_greed_score ?? 2)}
-                  statusColor={getStatusColor(snapshot?.fear_greed_score ?? 2)}
-                  icon="😱"
                   history={fgHistory}
-                  chartLabel="Sentiment Score"
                   tooltip={INDICATOR_TOOLTIPS['Fear & Greed']}
                   previousValue={prevSnapshot?.fear_greed_value}
                   previousScore={prevSnapshot?.fear_greed_score}
