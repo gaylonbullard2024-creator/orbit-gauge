@@ -23,7 +23,6 @@ export default function Dashboard() {
   const { data: report } = useLatestWeeklyReport();
   const { data: fgHistory } = useFearGreedHistory();
   const { data: btcHistory } = useBtcPriceHistory();
-  const { data: macroHistory } = useMacroHistory();
   const { data: snapHistory } = useSnapshotHistory();
 
   const hasMvrv = snapshot?.mvrv_score != null;
