@@ -23,7 +23,7 @@ Deno.serve(async (req) => {
     // 1. Fetch BTC price from CoinGecko
     // CoinGecko API
     const cgHeaders: Record<string, string> = { "Accept": "application/json" };
-    let cgUrl = "https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=usd&days=1400&interval=daily";
+    let cgUrl = "https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=usd&days=365&interval=daily";
     
     console.log("CoinGecko API key present:", !!cgApiKey, "length:", cgApiKey?.length ?? 0);
     
