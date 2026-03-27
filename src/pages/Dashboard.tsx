@@ -9,6 +9,7 @@ import {
 } from '@/hooks/useDashboard';
 import { CycleGauge } from '@/components/dashboard/CycleGauge';
 import { IndicatorCard } from '@/components/dashboard/IndicatorCard';
+import { FearGreedGauge } from '@/components/dashboard/FearGreedGauge';
 import { MacroPanel } from '@/components/dashboard/MacroPanel';
 import { PriceTrendChart } from '@/components/dashboard/PriceTrendChart';
 import { WeeklyCommentary } from '@/components/dashboard/WeeklyCommentary';
