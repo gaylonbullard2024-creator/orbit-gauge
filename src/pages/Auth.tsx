@@ -88,13 +88,32 @@ export default function Auth() {
               {loading ? 'Loading...' : isLogin ? 'Sign In' : 'Sign Up'}
             </Button>
           </form>
-          <div className="mt-4 text-center">
-            <button
-              onClick={() => { setIsLogin(!isLogin); setError(''); setMessage(''); }}
-              className="text-sm text-muted-foreground hover:text-primary transition-colors"
-            >
-              {isLogin ? "Don't have an account? Sign up" : 'Already have an account? Sign in'}
-            </button>
+          <div className="mt-4 space-y-2 text-center">
+            {isLogin && (
+              <button
+                onClick={async () => {
+                  if (!email) { setError('Enter your email first.'); return; }
+                  setLoading(true); setError(''); setMessage('');
+                  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+                    redirectTo: `${window.location.origin}/reset-password`,
+                  });
+                  if (error) setError(error.message);
+                  else setMessage('Check your email for a password reset link.');
+                  setLoading(false);
+                }}
+                className="text-sm text-muted-foreground hover:text-primary transition-colors"
+              >
+                Forgot your password?
+              </button>
+            )}
+            <div>
+              <button
+                onClick={() => { setIsLogin(!isLogin); setError(''); setMessage(''); }}
+                className="text-sm text-muted-foreground hover:text-primary transition-colors"
+              >
+                {isLogin ? "Don't have an account? Sign up" : 'Already have an account? Sign in'}
+              </button>
+            </div>
           </div>
         </CardContent>
       </Card>
