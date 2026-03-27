@@ -46,6 +46,13 @@ export default function Dashboard() {
     [snapHistory]
   );
 
+  const macroHistory = useMemo(
+    () => (snapHistory ?? [])
+      .filter((s) => s.macro_value != null)
+      .map((s) => ({ date: s.date, value: Number(s.macro_value) })),
+    [snapHistory]
+  );
+
   function getMacroRegime(score: number | null): string {
     if (score == null) return 'Neutral';
     if (score <= 1) return 'Supportive';
