@@ -4,7 +4,6 @@ import {
   useLatestWeeklyReport,
   useFearGreedHistory,
   useBtcPriceHistory,
-  useMacroHistory,
   useSnapshotHistory,
 } from '@/hooks/useDashboard';
 import { CycleGauge } from '@/components/dashboard/CycleGauge';
@@ -23,7 +22,6 @@ export default function Dashboard() {
   const { data: report } = useLatestWeeklyReport();
   const { data: fgHistory } = useFearGreedHistory();
   const { data: btcHistory } = useBtcPriceHistory();
-  const { data: macroHistory } = useMacroHistory();
   const { data: snapHistory } = useSnapshotHistory();
 
   const hasMvrv = snapshot?.mvrv_score != null;
@@ -44,6 +42,13 @@ export default function Dashboard() {
     () => (snapHistory ?? [])
       .filter((s) => s.rainbow_score != null)
       .map((s) => ({ date: s.date, value: s.rainbow_score! })),
+    [snapHistory]
+  );
+
+  const macroHistory = useMemo(
+    () => (snapHistory ?? [])
+      .filter((s) => s.macro_value != null)
+      .map((s) => ({ date: s.date, value: Number(s.macro_value) })),
     [snapHistory]
   );
 
