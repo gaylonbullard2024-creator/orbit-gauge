@@ -36,12 +36,15 @@ Deno.serve(async (req) => {
     if (!cgRes.ok) throw new Error(`CoinGecko error: ${cgRes.status} ${await cgRes.text()}`);
     const cgData = await cgRes.json();
     const prices: [number, number][] = cgData.prices;
+    const marketCaps: [number, number][] = cgData.market_caps ?? [];
 
-    // Store latest price
+    // Store latest price + market cap
     const latestPrice = prices[prices.length - 1][1];
+    const latestMcap = marketCaps.length > 0 ? marketCaps[marketCaps.length - 1][1] : null;
     await supabase.from("btc_daily_prices").upsert({
       date: today,
       close_usd: latestPrice,
+      market_cap_usd: latestMcap,
       source: "coingecko",
     }, { onConflict: "date" });
 
@@ -129,14 +132,29 @@ Deno.serve(async (req) => {
       return 4;
     }
 
+    // 6b. Calculate MVRV ratio (market cap / avg market cap)
+    let mvrvValue: number | null = null;
+    let mvrvScore = 0;
+    if (latestMcap && marketCaps.length > 30) {
+      const avgMcap = marketCaps.reduce((sum, m) => sum + m[1], 0) / marketCaps.length;
+      mvrvValue = latestMcap / avgMcap;
+      // Score: <0.8 deep value, 0.8-1.0 accumulate, 1.0-1.2 growth, 1.2-1.5 overheated, >1.5 bubble
+      if (mvrvValue < 0.8) mvrvScore = 0;
+      else if (mvrvValue < 1.0) mvrvScore = 1;
+      else if (mvrvValue < 1.2) mvrvScore = 2;
+      else if (mvrvValue < 1.5) mvrvScore = 3;
+      else mvrvScore = 4;
+    }
+
     const fgScore = scoreFG(fgValue);
     const maScore = scoreTrend(latestPrice, ma200w);
     const rbScore = scoreRB(rainbowBand);
     const macroScore = scoreMacro(dxyValue);
-    const totalScore = fgScore + maScore + rbScore + macroScore;
+    const hasMvrv = mvrvValue != null;
+    const totalScore = fgScore + maScore + rbScore + macroScore + (hasMvrv ? mvrvScore : 0);
 
     // Map to phase
-    const maxScore = 16;
+    const maxScore = hasMvrv ? 20 : 16;
     const norm = (totalScore / maxScore) * 20;
     let phase: string;
     if (norm <= 5) phase = "Deep Value";
@@ -159,6 +177,8 @@ Deno.serve(async (req) => {
       btc_close_usd: latestPrice,
       fear_greed_value: fgValue,
       fear_greed_score: fgScore,
+      mvrv_value: mvrvValue,
+      mvrv_score: mvrvScore,
       ma_200w_value: ma200w,
       ma_200w_score: maScore,
       rainbow_band: rainbowBand,

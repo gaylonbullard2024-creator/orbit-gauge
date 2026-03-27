@@ -52,6 +52,13 @@ export default function Dashboard() {
     [snapHistory]
   );
 
+  const mvrvHistory = useMemo(
+    () => (snapHistory ?? [])
+      .filter((s) => s.mvrv_value != null)
+      .map((s) => ({ date: s.date, value: Number(s.mvrv_value) })),
+    [snapHistory]
+  );
+
   function getMacroRegime(score: number | null): string {
     if (score == null) return 'Neutral';
     if (score <= 1) return 'Supportive';
@@ -120,14 +127,17 @@ export default function Dashboard() {
                   chartLabel="Sentiment Score"
                 />
                 <IndicatorCard
-                  title="MVRV Z-Score"
-                  value={snapshot?.mvrv_value?.toString() ?? '—'}
+                  title="MVRV Ratio"
+                  value={snapshot?.mvrv_value ? Number(snapshot.mvrv_value).toFixed(2) : '—'}
                   score={snapshot?.mvrv_score ?? 0}
                   maxScore={4}
-                  status="Coming Soon"
-                  statusColor="hsl(215, 15%, 55%)"
+                  status={hasMvrv ? getStatusLabel(snapshot?.mvrv_score ?? 2) : 'Awaiting Data'}
+                  statusColor={hasMvrv ? getStatusColor(snapshot?.mvrv_score ?? 2) : 'hsl(215, 15%, 55%)'}
                   icon="📊"
                   disabled={!hasMvrv}
+                  history={mvrvHistory}
+                  chartLabel="MVRV Ratio"
+                  formatValue={(v) => v.toFixed(2)}
                 />
                 <IndicatorCard
                   title="200W Moving Avg"
