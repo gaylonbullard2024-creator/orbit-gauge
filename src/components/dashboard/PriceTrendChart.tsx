@@ -36,11 +36,6 @@ export function PriceTrendChart({ priceHistory, maHistory }: PriceTrendChartProp
   }, [range]);
 
   if (!priceHistory.length) return null;
-    if (!r || r.days === 0) return null;
-    const d = new Date();
-    d.setDate(d.getDate() - r.days);
-    return d.toISOString().slice(0, 10);
-  }, [range]);
 
   // Merge price + MA data by date, filtered by range
   const maMap = new Map(maHistory.map((p) => [p.date, p.value]));
