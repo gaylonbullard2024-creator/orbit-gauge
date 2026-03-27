@@ -26,6 +26,7 @@ export function CycleGauge({ score, maxScore, phase, strategy, action, signalStr
   }, [score, maxScore]);
 
   const activePhase = PHASES.find((p) => p.label === phase) ?? PHASES[2];
+  const safeSignalStrength = signalStrength ?? { level: 'Low', color: 'hsl(215, 15%, 55%)' };
 
   return (
     <div className="flex flex-col items-center gap-4 sm:gap-6">
@@ -102,9 +103,9 @@ export function CycleGauge({ score, maxScore, phase, strategy, action, signalStr
 
         {/* Signal Strength */}
         <div className="flex items-center justify-center gap-1.5">
-          <Shield className="h-3.5 w-3.5" style={{ color: signalStrength.color }} />
-          <span className="text-xs font-medium" style={{ color: signalStrength.color }}>
-            Signal Strength: {signalStrength.level}
+          <Shield className="h-3.5 w-3.5" style={{ color: safeSignalStrength.color }} />
+          <span className="text-xs font-medium" style={{ color: safeSignalStrength.color }}>
+            Signal Strength: {safeSignalStrength.level}
           </span>
         </div>
       </div>
