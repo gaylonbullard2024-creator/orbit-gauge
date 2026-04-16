@@ -1,4 +1,4 @@
-import { useAuth } from '@/lib/auth';
+// Auth removed — dashboard is public for now
 import {
   useLatestSnapshot,
   usePreviousSnapshot,
@@ -32,7 +32,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useMemo } from 'react';
 
 export default function Dashboard() {
-  const { user, signOut } = useAuth();
+  // Auth removed — dashboard is public
   const { data: snapshot, isLoading } = useLatestSnapshot();
   const { data: prevSnapshot } = usePreviousSnapshot();
   const { data: report } = useLatestWeeklyReport();
@@ -97,10 +97,6 @@ export default function Dashboard() {
               <span className="text-base sm:text-lg font-bold text-primary">₿</span>
             </div>
             <h1 className="text-sm sm:text-lg font-semibold">MCG Bitcoin Cycle Dashboard</h1>
-          </div>
-          <div className="flex items-center gap-3">
-            <span className="text-xs text-muted-foreground hidden sm:block">{user?.email}</span>
-            <Button variant="ghost" size="sm" onClick={signOut}>Sign Out</Button>
           </div>
         </div>
       </header>
