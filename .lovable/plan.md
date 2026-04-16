@@ -1,29 +1,46 @@
 
 
-# Fix: DXY/Macro Data Not Showing on Dashboard
+# Rainbow Chart Visual Overhaul
 
-## Root Cause
-The FRED series `DTWEXBGS` (Broad Trade-Weighted Dollar Index) is published **weekly with a 1-2 week lag**. The pipeline fetches only the 5 most recent observations and skips entries marked `"."` (FRED's missing-data placeholder). If all 5 are `"."`, nothing is stored. This has resulted in **zero rows** in `macro_series_daily` and `null` for `macro_value` in every snapshot.
+## Current Problems
+- Only 5 bands — the classic rainbow chart uses 8-9 distinct color bands
+- Bands are nearly invisible (`fillOpacity: 0.15`) — reference images show solid, opaque bands
+- Y-axis is linear — should be logarithmic to match the classic curved rainbow shape
+- Color palette doesn't follow the full rainbow spectrum (dark blue → blue → green → yellow → orange → red → dark red)
 
-## Fix
+## Changes (single file: `src/components/dashboard/RainbowChart.tsx`)
 
-### 1. Increase FRED fetch window and add logging
-- Change `limit=5` to `limit=30` so we look further back for a valid observation
-- Add `console.log` statements for FRED response status and observation count so failures are visible in logs
-- Log a warning if no valid observation is found
+### 1. Expand to 9 rainbow bands with true rainbow colors
+```
+Maximum Bubble Territory  →  dark red (#882255)
+Sell. Seriously, SELL!    →  red (#DC143C)
+FOMO Intensifies          →  orange-red (#FF4500)
+Is this a bubble?         →  orange (#FF8C00)
+HODL!                     →  yellow (#FFD700)
+Still Cheap               →  green-yellow (#9ACD32)
+Accumulate                →  green (#2E8B57)
+BUY!                      →  teal (#20B2AA)
+Fire Sale                 →  dark blue (#1E3A8A)
+```
 
-### 2. Carry forward the last known DXY value
-When the FRED API returns no new valid observation, query `macro_series_daily` for the most recent stored value and use that for the snapshot instead of leaving it null. This ensures the dashboard always shows the latest known DXY reading.
+### 2. Make bands solid and opaque
+- Change `fillOpacity` from `0.15` to `0.85` for rich, saturated bands
+- This matches the reference images where bands are clearly visible
 
-### 3. Store the observation's actual date, not today's date
-Currently the pipeline stores `date: today` for macro data. Since DTWEXBGS is weekly and lagged, the stored date should be the observation's actual date from FRED (`obs.date`), and the pipeline should also store today's date as a forward-fill row so the dashboard query works.
+### 3. Logarithmic Y-axis
+- Set `YAxis scale="log" domain={['auto', 'auto']}` so bands curve naturally upward
+- Tick formatter stays as `$Xk` format
 
-### 4. Update the snapshot write to use the carried-forward value
-The `macro_value` field in `dashboard_snapshots` should use the carried-forward DXY value instead of only the fresh fetch result.
+### 4. Update band generation multipliers
+- 9 bands with tighter spacing to create the smooth rainbow gradient
+- Multipliers range from `0.3x` (fire sale floor) to `3.0x` (bubble ceiling)
 
-## Files Changed
-- `supabase/functions/daily-pipeline/index.ts` — increase FRED limit, add logging, carry-forward logic
+### 5. Update legend
+- Compact 9-band legend in 3×3 grid on desktop, scrollable on mobile
+- Each band shows color swatch + label
 
-## No database changes needed
-The existing schema supports this fix as-is.
+### 6. Price line styling
+- White line with slight glow for contrast against colored bands
+
+## No other files changed. No database changes.
 
