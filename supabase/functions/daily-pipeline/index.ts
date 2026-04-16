@@ -66,20 +66,55 @@ Deno.serve(async (req) => {
     let dxyValue: number | null = null;
     if (fredKey) {
       const fredRes = await fetch(
-        `https://api.stlouisfed.org/fred/series/observations?series_id=DTWEXBGS&api_key=${fredKey}&file_type=json&sort_order=desc&limit=5`
+        `https://api.stlouisfed.org/fred/series/observations?series_id=DTWEXBGS&api_key=${fredKey}&file_type=json&sort_order=desc&limit=30`
       );
+      console.log("FRED API response status:", fredRes.status);
+      if (!fredRes.ok) {
+        const errText = await fredRes.text();
+        console.error("FRED API error:", errText);
+      }
       if (fredRes.ok) {
         const fredData = await fredRes.json();
-        const obs = fredData.observations?.find((o: any) => o.value !== ".");
-        if (obs) {
+        const validObs = (fredData.observations ?? []).filter((o: any) => o.value !== ".");
+        console.log("FRED valid observations found:", validObs.length);
+        if (validObs.length > 0) {
+          const obs = validObs[0]; // most recent valid (sorted desc)
           dxyValue = parseFloat(obs.value);
+          const obsDate = obs.date; // actual FRED observation date
+          // Store with actual observation date
           await supabase.from("macro_series_daily").upsert({
-            date: today,
+            date: obsDate,
             series_id: "DTWEXBGS",
             value: dxyValue,
             source: "fred",
           }, { onConflict: "date,series_id" });
+          // Also forward-fill today's date so dashboard queries work
+          if (obsDate !== today) {
+            await supabase.from("macro_series_daily").upsert({
+              date: today,
+              series_id: "DTWEXBGS",
+              value: dxyValue,
+              source: "fred",
+            }, { onConflict: "date,series_id" });
+          }
+        } else {
+          console.warn("FRED: no valid DXY observations in last 30 entries");
         }
+      }
+    }
+
+    // Carry forward: if no fresh DXY, use last known value
+    if (dxyValue == null) {
+      const { data: lastMacro } = await supabase
+        .from("macro_series_daily")
+        .select("value")
+        .eq("series_id", "DTWEXBGS")
+        .order("date", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (lastMacro) {
+        dxyValue = Number(lastMacro.value);
+        console.log("DXY carry-forward value:", dxyValue);
       }
     }
 
