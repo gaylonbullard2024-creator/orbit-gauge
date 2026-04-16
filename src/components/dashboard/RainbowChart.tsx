@@ -228,7 +228,7 @@ export function RainbowChart({ priceHistory, currentBand }: RainbowChartProps) {
         </ResponsiveContainer>
 
         {/* 9-band legend — 3×3 grid */}
-        <div className="mt-4 grid grid-cols-3 gap-1.5 sm:gap-2">
+        <div className="mt-4 grid grid-cols-2 gap-1.5 sm:grid-cols-3 sm:gap-2">
           {RAINBOW_BANDS.map((band) => (
             <div
               key={band.key}
