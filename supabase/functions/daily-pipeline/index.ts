@@ -127,7 +127,7 @@ Deno.serve(async (req) => {
       (Date.now() - new Date("2009-01-03").getTime()) / (1000 * 60 * 60 * 24)
     );
     const logPrice = Math.log10(latestPrice);
-    const logRegression = 2.66167155005961 * Math.log10(daysSinceGenesis) - 17.01593313;
+    const logRegression = 5.83 * Math.log10(daysSinceGenesis) - 17.01;
     const deviation = logPrice - logRegression;
     let rainbowBand: string;
     if (deviation < -0.4) rainbowBand = "Fire Sale";
