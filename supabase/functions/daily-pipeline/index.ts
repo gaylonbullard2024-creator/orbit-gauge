@@ -69,6 +69,10 @@ Deno.serve(async (req) => {
         `https://api.stlouisfed.org/fred/series/observations?series_id=DTWEXBGS&api_key=${fredKey}&file_type=json&sort_order=desc&limit=30`
       );
       console.log("FRED API response status:", fredRes.status);
+      if (!fredRes.ok) {
+        const errText = await fredRes.text();
+        console.error("FRED API error:", errText);
+      }
       if (fredRes.ok) {
         const fredData = await fredRes.json();
         const validObs = (fredData.observations ?? []).filter((o: any) => o.value !== ".");
