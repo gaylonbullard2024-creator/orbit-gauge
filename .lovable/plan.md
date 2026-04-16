@@ -1,159 +1,81 @@
 
 
-# Dashboard v2 Upgrade Plan
+# Weekly Report Email Notifications
 
 ## Overview
-A comprehensive upgrade to make the dashboard feel institutional, actionable, and alive — transforming raw data into clear investor signals.
+Set up automated weekly email notifications that send the Bitcoin Cycle Dashboard report summary to subscribers every Saturday morning.
 
----
+## Prerequisites — Email Domain Setup
+This project does not have an email domain configured yet. Before we can send emails, we need to set up a sender domain. This is a one-time setup that takes a few minutes.
 
-## 1. Hero Cycle Gauge Redesign
-**Current:** Small gauge with score/phase/strategy text below.
-**New:** Large full-width hero speedometer dominating the top of the page.
-- Bigger SVG gauge (wider arc, thicker bands)
-- Score prominently centered inside the gauge (e.g., "11/16")
-- Phase badge below gauge
-- Clear action text: "Hold / Accumulate on dips"
-- Week-over-week score change arrow (e.g., "↑1 from last week")
+## What Gets Built
 
-**File:** `src/components/dashboard/CycleGauge.tsx`
+### 1. Email Domain & Infrastructure
+- Configure a sender domain so emails come from your brand (e.g., `notify@yourdomain.com`)
+- Set up the email sending pipeline (queue, retries, delivery tracking)
 
----
+### 2. Subscriber Table
+- New `email_subscribers` database table to store subscriber emails
+- Fields: email, subscribed status, created date
+- RLS policies so users can manage their own subscription
 
-## 2. Weekly Summary Card (New Component)
-Placed immediately after the hero gauge, before indicator cards.
-- "This Week's Summary" header
-- Current phase badge + signal strength
-- 2-3 auto-generated bullet insights (derived from snapshot comparison)
-- Key change highlight (e.g., "Sentiment improved from Fear to Neutral")
+### 3. Subscribe/Unsubscribe UI
+- Add a subscription form to the dashboard (email input + subscribe button)
+- Logged-in users can subscribe with one click using their account email
+- Unsubscribe page for one-click opt-out from emails
 
-**New file:** `src/components/dashboard/WeeklySummaryCard.tsx`
+### 4. Weekly Report Email Template
+- Branded React Email template matching the dashboard's dark/orange theme (white email background per best practices)
+- Content includes: Cycle Gauge score, phase, strategy signal, all five indicator readings, and key changes from the previous week
+- Clean, scannable layout — investors read it in 60 seconds
 
----
+### 5. Weekly Email Edge Function
+- New `send-weekly-report` edge function
+- Pulls the latest dashboard snapshot and previous snapshot
+- Generates change descriptions
+- Sends personalized emails to all active subscribers
+- Triggered via a scheduled cron job every Saturday at 6 AM ET
 
-## 3. Week-over-Week Change Indicators
-Fetch the previous day's snapshot (or last week's) alongside the latest.
-- Each indicator card shows delta: `48 → 55 ↑` with green/red coloring
-- Score change shown as small badge
-- Gauge shows overall score change
+### 6. Cron Schedule
+- `pg_cron` job that fires `send-weekly-report` every Saturday morning
+- Uses the same pattern as the daily pipeline
 
-**Files:** `src/hooks/useDashboard.ts` (add `usePreviousSnapshot` hook), `src/components/dashboard/IndicatorCard.tsx`, `src/pages/Dashboard.tsx`
+## Technical Details
 
----
-
-## 4. Signal Strength / Confidence Indicator
-Calculate based on indicator agreement:
-- **High** — 4+ of 5 indicators agree on direction
-- **Medium** — 3 of 5 agree
-- **Low** — mixed signals
-
-Displayed as a badge on the hero gauge and weekly summary card.
-
-**File:** `src/lib/scoring.ts` (new function), displayed in `CycleGauge.tsx`
-
----
-
-## 5. Indicator Tooltips
-Add an "i" icon (Lucide `Info`) next to each indicator title.
-On hover, show a one-line explanation:
-- Fear & Greed: "Measures market sentiment (0-100)"
-- MVRV Ratio: "Market value vs realized value — detects over/undervaluation"
-- 200W MA: "Long-term trend support level"
-- Rainbow: "Logarithmic price band model"
-- Macro/DXY: "Dollar strength — lower = better for BTC"
-
-Uses existing Radix tooltip component.
-
-**File:** `src/components/dashboard/IndicatorCard.tsx`
-
----
-
-## 6. Historical Cycle Score Timeline
-New chart section showing cycle score over time (from `dashboard_snapshots`).
-- X-axis: time, Y-axis: cycle score (0-20)
-- Background color bands for each phase zone
-- Annotated markers for historical tops/bottoms if data supports it
-
-**New file:** `src/components/dashboard/CycleTimeline.tsx`
-
----
-
-## 7. "What Changed This Week" Section
-Auto-generated from comparing current vs previous snapshot:
-- "Sentiment moved from Fear to Neutral"
-- "Price crossed above 200W MA"
-- "MVRV entered overheated zone"
-
-Logic compares phase transitions, score changes, and threshold crossings.
-
-**New file:** `src/components/dashboard/WeeklyChanges.tsx`
-
----
-
-## 8. Market Phase History List
-Simple chronological list derived from snapshots:
-- Groups by month, shows phase for each month
-- Format: "Jan 2026 → Accumulation", "Feb 2026 → Bull Trend"
-
-**New file:** `src/components/dashboard/PhaseHistory.tsx`
-
----
-
-## 9. Partial Public Dashboard / Paywall Gate
-**Scoping needed** — will define which sections are visible publicly vs gated:
-- Option A: Show gauge + phase publicly, lock indicators + commentary
-- Option B: Show everything blurred with CTA overlay
-- This will be planned separately after confirming the approach with you.
-
----
-
-## 10. UI Refinements (Already Mostly Done)
-The dark institutional theme (charcoal/black, white text, orange accents) is already in place. Minor polish:
-- Ensure all new components use the existing design tokens
-- Consistent card styling across new sections
-
----
-
-## Updated Dashboard Layout Order
-```text
-┌─────────────────────────────────┐
-│  Header                         │
-├─────────────────────────────────┤
-│  Hero Cycle Gauge (enlarged)    │
-│  Score + Phase + Action + Δ     │
-│  Signal Strength badge          │
-├─────────────────────────────────┤
-│  Weekly Summary Card            │
-│  Phase · Key change · Bullets   │
-├─────────────────────────────────┤
-│  Core Indicators (5 cards)      │
-│  Each with Δ + tooltip          │
-├─────────────────────────────────┤
-│  Cycle Score Timeline Chart     │
-├─────────────────────────────────┤
-│  BTC Price vs 200W MA           │
-├─────────────────────────────────┤
-│  What Changed This Week         │
-├─────────────────────────────────┤
-│  Macro Environment              │
-├─────────────────────────────────┤
-│  Phase History List             │
-├─────────────────────────────────┤
-│  Weekly Commentary (full)       │
-├─────────────────────────────────┤
-│  Footer                         │
-└─────────────────────────────────┘
+**Database migration:**
+```sql
+CREATE TABLE public.email_subscribers (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid REFERENCES auth.users(id) ON DELETE CASCADE,
+  email text NOT NULL,
+  is_active boolean DEFAULT true,
+  created_at timestamptz DEFAULT now(),
+  UNIQUE(email)
+);
+ALTER TABLE public.email_subscribers ENABLE ROW LEVEL SECURITY;
+-- Users can read/insert/update their own subscriptions
 ```
 
-## Database Changes
-- **None required.** All new features derive from existing `dashboard_snapshots` data. The `usePreviousSnapshot` hook just fetches the second-most-recent row.
+**Edge function flow:**
+1. Query `email_subscribers` where `is_active = true`
+2. Fetch latest + previous `dashboard_snapshots`
+3. For each subscriber, invoke `send-transactional-email` with the weekly report template
+4. Log completion
+
+**Email template content:**
+- Header: "MCG Bitcoin Cycle Report — Week of [date]"
+- Cycle Gauge: score, phase, strategy
+- Indicator summary table (5 rows)
+- Key changes bullet points
+- CTA button: "View Full Dashboard"
 
 ## Implementation Order
-1. Hero gauge redesign + signal strength
-2. Previous snapshot hook + delta indicators
-3. Weekly summary card + "What Changed"
-4. Indicator tooltips
-5. Cycle timeline chart
-6. Phase history list
-7. Paywall gate (scoping discussion first)
+1. Set up email domain (requires your input)
+2. Set up email infrastructure
+3. Create subscriber table + RLS
+4. Build subscribe UI on dashboard
+5. Create weekly report email template
+6. Create `send-weekly-report` edge function
+7. Schedule Saturday cron job
+8. Create unsubscribe page
 
