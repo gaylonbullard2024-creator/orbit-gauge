@@ -14,11 +14,27 @@ import {
 import type { HistoricalPoint } from '@/hooks/useDashboard';
 
 const RAINBOW_BANDS = [
-  { key: 'fire_sale', label: 'Fire Sale', color: 'hsl(220, 70%, 50%)' },
-  { key: 'accumulate', label: 'Accumulate', color: 'hsl(152, 60%, 42%)' },
-  { key: 'hold', label: 'Hold', color: 'hsl(50, 85%, 50%)' },
-  { key: 'bubble', label: 'Bubble Forming', color: 'hsl(28, 90%, 55%)' },
-  { key: 'top', label: 'Cycle Top Risk', color: 'hsl(0, 72%, 51%)' },
+  { key: 'band_9', label: 'Maximum Bubble Territory', color: '#882255' },
+  { key: 'band_8', label: 'Sell. Seriously, SELL!', color: '#DC143C' },
+  { key: 'band_7', label: 'FOMO Intensifies', color: '#FF4500' },
+  { key: 'band_6', label: 'Is this a bubble?', color: '#FF8C00' },
+  { key: 'band_5', label: 'HODL!', color: '#FFD700' },
+  { key: 'band_4', label: 'Still Cheap', color: '#9ACD32' },
+  { key: 'band_3', label: 'Accumulate', color: '#2E8B57' },
+  { key: 'band_2', label: 'BUY!', color: '#20B2AA' },
+  { key: 'band_1', label: 'Fire Sale', color: '#1E3A8A' },
+];
+
+const BAND_MULTIPLIERS = [
+  { floor: 0.3, ceil: 0.45 },   // band_1: Fire Sale
+  { floor: 0.45, ceil: 0.6 },   // band_2: BUY!
+  { floor: 0.6, ceil: 0.78 },   // band_3: Accumulate
+  { floor: 0.78, ceil: 0.95 },  // band_4: Still Cheap
+  { floor: 0.95, ceil: 1.15 },  // band_5: HODL!
+  { floor: 1.15, ceil: 1.4 },   // band_6: Is this a bubble?
+  { floor: 1.4, ceil: 1.75 },   // band_7: FOMO Intensifies
+  { floor: 1.75, ceil: 2.2 },   // band_8: Sell. Seriously, SELL!
+  { floor: 2.2, ceil: 3.0 },    // band_9: Maximum Bubble Territory
 ];
 
 const RANGES = [
@@ -33,15 +49,9 @@ interface RainbowChartProps {
   currentBand: string | null;
 }
 
-/**
- * Generate logarithmic rainbow bands based on price data.
- * Uses a simplified log regression approach — bands are proportional
- * multiples of the 200W MA / long-term trend line.
- */
 function generateBands(priceHistory: HistoricalPoint[]) {
   if (priceHistory.length < 2) return [];
 
-  // Calculate a rolling "fair value" as a smoothed trendline
   const prices = priceHistory.map((p) => p.value);
   const smoothWindow = Math.min(60, Math.floor(prices.length / 3));
 
@@ -54,15 +64,17 @@ function generateBands(priceHistory: HistoricalPoint[]) {
 
   return priceHistory.map((p, i) => {
     const base = smoothed[i];
-    return {
+    const point: Record<string, unknown> = {
       date: p.date,
       price: p.value,
-      fire_sale: [base * 0.4, base * 0.65],
-      accumulate: [base * 0.65, base * 0.85],
-      hold: [base * 0.85, base * 1.15],
-      bubble: [base * 1.15, base * 1.5],
-      top: [base * 1.5, base * 2.2],
     };
+    // Bands rendered bottom-to-top; reversed array so band_1 is first
+    const reversed = [...BAND_MULTIPLIERS].reverse();
+    reversed.forEach((m, idx) => {
+      const key = `band_${BAND_MULTIPLIERS.length - idx}`;
+      point[key] = [base * m.floor, base * m.ceil];
+    });
+    return point;
   });
 }
 
@@ -86,6 +98,9 @@ export function RainbowChart({ priceHistory, currentBand }: RainbowChartProps) {
 
   if (data.length < 2) return null;
 
+  // Render bands bottom-to-top (Fire Sale first, then layered upward)
+  const bandsBottomUp = [...RAINBOW_BANDS].reverse();
+
   return (
     <Card className="border-border/50 bg-card/80">
       <CardHeader className="pb-2">
@@ -101,7 +116,7 @@ export function RainbowChart({ priceHistory, currentBand }: RainbowChartProps) {
                   <Info className="h-3.5 w-3.5 text-muted-foreground/50 hover:text-muted-foreground cursor-help" />
                 </TooltipTrigger>
                 <TooltipContent side="top" className="max-w-[250px] text-xs">
-                  Logarithmic price band model showing where BTC sits relative to its long-term growth curve. Simple but effective for cycle positioning.
+                  Logarithmic regression rainbow band model. Shows where BTC sits relative to its long-term growth curve.
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
@@ -120,8 +135,6 @@ export function RainbowChart({ priceHistory, currentBand }: RainbowChartProps) {
                 {r.label}
               </button>
             ))}
-
-            {/* Current band badge */}
             {currentBand && (
               <span className="ml-auto text-xs font-semibold">
                 Current:{' '}
@@ -142,29 +155,30 @@ export function RainbowChart({ priceHistory, currentBand }: RainbowChartProps) {
       <CardContent>
         <ResponsiveContainer width="100%" height={280} className="sm:!h-[340px]">
           <ComposedChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
-            {/* Rainbow band areas */}
-            {RAINBOW_BANDS.map((band) => (
+            {/* Rainbow bands — bottom to top */}
+            {bandsBottomUp.map((band) => (
               <Area
                 key={band.key}
                 type="monotone"
                 dataKey={band.key}
                 stroke="none"
                 fill={band.color}
-                fillOpacity={0.15}
+                fillOpacity={0.85}
                 activeDot={false}
                 dot={false}
                 isAnimationActive={false}
               />
             ))}
 
-            {/* BTC Price line */}
+            {/* BTC Price line — white with glow */}
             <Line
               type="monotone"
               dataKey="price"
-              stroke="hsl(var(--foreground))"
-              strokeWidth={2}
+              stroke="#ffffff"
+              strokeWidth={2.5}
               dot={false}
-              activeDot={{ r: 3, fill: 'hsl(var(--primary))' }}
+              activeDot={{ r: 3, fill: '#ffffff', stroke: '#ffffff' }}
+              style={{ filter: 'drop-shadow(0 0 4px rgba(255,255,255,0.6))' }}
             />
 
             <XAxis
@@ -181,9 +195,12 @@ export function RainbowChart({ priceHistory, currentBand }: RainbowChartProps) {
               tick={{ fontSize: 10, fill: 'hsl(215, 15%, 55%)' }}
               tickLine={false}
               axisLine={false}
-              tickFormatter={(v: number) => `$${(v / 1000).toFixed(0)}k`}
+              scale="log"
+              domain={['auto', 'auto']}
+              tickFormatter={(v: number) =>
+                v >= 1000 ? `$${(v / 1000).toFixed(0)}k` : `$${v.toFixed(0)}`
+              }
               width={50}
-              domain={['dataMin', 'dataMax']}
             />
             <RechartsTooltip
               contentStyle={{
@@ -195,10 +212,14 @@ export function RainbowChart({ priceHistory, currentBand }: RainbowChartProps) {
               }}
               labelFormatter={(d: string) => new Date(d).toLocaleDateString()}
               formatter={(v: unknown, name: string) => {
-                if (name === 'price') return [`$${Number(v).toLocaleString(undefined, { maximumFractionDigits: 0 })}`, 'BTC Price'];
+                if (name === 'price')
+                  return [`$${Number(v).toLocaleString(undefined, { maximumFractionDigits: 0 })}`, 'BTC Price'];
                 if (Array.isArray(v)) {
                   const band = RAINBOW_BANDS.find((b) => b.key === name);
-                  return [`$${Number(v[0]).toLocaleString(undefined, { maximumFractionDigits: 0 })} – $${Number(v[1]).toLocaleString(undefined, { maximumFractionDigits: 0 })}`, band?.label ?? name];
+                  return [
+                    `$${Number(v[0]).toLocaleString(undefined, { maximumFractionDigits: 0 })} – $${Number(v[1]).toLocaleString(undefined, { maximumFractionDigits: 0 })}`,
+                    band?.label ?? name,
+                  ];
                 }
                 return [String(v), name];
               }}
@@ -206,22 +227,22 @@ export function RainbowChart({ priceHistory, currentBand }: RainbowChartProps) {
           </ComposedChart>
         </ResponsiveContainer>
 
-        {/* Band legend + interpretation */}
-        <div className="mt-4 grid grid-cols-1 sm:grid-cols-5 gap-2">
+        {/* 9-band legend — 3×3 grid */}
+        <div className="mt-4 grid grid-cols-3 gap-1.5 sm:gap-2">
           {RAINBOW_BANDS.map((band) => (
             <div
               key={band.key}
-              className={`flex items-center gap-2 rounded-lg px-3 py-2 text-xs transition-all ${
+              className={`flex items-center gap-1.5 rounded-md px-2 py-1.5 text-[10px] sm:text-xs transition-all ${
                 currentBand && bandMatchesKey(currentBand, band.key)
                   ? 'bg-secondary/80 ring-1 ring-primary/30'
                   : 'bg-secondary/30'
               }`}
             >
-              <div className="h-3 w-3 rounded-sm shrink-0" style={{ backgroundColor: band.color }} />
-              <div>
-                <p className="font-semibold text-foreground">{band.label}</p>
-                <p className="text-muted-foreground text-[10px]">{getBandAction(band.key)}</p>
-              </div>
+              <div
+                className="h-2.5 w-2.5 rounded-sm shrink-0"
+                style={{ backgroundColor: band.color }}
+              />
+              <span className="font-medium text-foreground truncate">{band.label}</span>
             </div>
           ))}
         </div>
@@ -232,36 +253,37 @@ export function RainbowChart({ priceHistory, currentBand }: RainbowChartProps) {
 
 function getBandColor(band: string): string {
   const map: Record<string, string> = {
-    'Fire Sale': 'hsl(220, 70%, 50%)',
-    'Accumulate': 'hsl(152, 60%, 42%)',
-    'Growth': 'hsl(50, 85%, 50%)',
-    'Hold': 'hsl(50, 85%, 50%)',
-    'Overheated': 'hsl(28, 90%, 55%)',
-    'Bubble Risk': 'hsl(0, 72%, 51%)',
-    'Bubble Forming': 'hsl(28, 90%, 55%)',
-    'Cycle Top Risk': 'hsl(0, 72%, 51%)',
+    'Maximum Bubble Territory': '#882255',
+    'Sell. Seriously, SELL!': '#DC143C',
+    'FOMO Intensifies': '#FF4500',
+    'Is this a bubble?': '#FF8C00',
+    'HODL!': '#FFD700',
+    'Still Cheap': '#9ACD32',
+    'Accumulate': '#2E8B57',
+    'BUY!': '#20B2AA',
+    'Fire Sale': '#1E3A8A',
+    // Legacy mappings
+    'Growth': '#FFD700',
+    'Hold': '#FFD700',
+    'Overheated': '#FF8C00',
+    'Bubble Risk': '#DC143C',
+    'Bubble Forming': '#FF4500',
+    'Cycle Top Risk': '#882255',
   };
-  return map[band] ?? 'hsl(45, 90%, 50%)';
+  return map[band] ?? '#FFD700';
 }
 
 function bandMatchesKey(bandLabel: string, key: string): boolean {
   const map: Record<string, string[]> = {
-    fire_sale: ['Fire Sale'],
-    accumulate: ['Accumulate'],
-    hold: ['Growth', 'Hold'],
-    bubble: ['Overheated', 'Bubble Forming', 'Bubble Risk'],
-    top: ['Cycle Top Risk'],
+    band_1: ['Fire Sale'],
+    band_2: ['BUY!'],
+    band_3: ['Accumulate'],
+    band_4: ['Still Cheap'],
+    band_5: ['HODL!', 'Hold', 'Growth'],
+    band_6: ['Is this a bubble?'],
+    band_7: ['FOMO Intensifies', 'Bubble Forming'],
+    band_8: ['Sell. Seriously, SELL!', 'Overheated', 'Bubble Risk'],
+    band_9: ['Maximum Bubble Territory', 'Cycle Top Risk'],
   };
   return map[key]?.includes(bandLabel) ?? false;
-}
-
-function getBandAction(key: string): string {
-  const actions: Record<string, string> = {
-    fire_sale: 'Maximum accumulation zone',
-    accumulate: 'Build positions gradually',
-    hold: 'Maintain exposure',
-    bubble: 'Reduce risk, take profits',
-    top: 'Exit or hedge positions',
-  };
-  return actions[key] ?? '';
 }
