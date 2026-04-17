@@ -9,8 +9,6 @@ import {
   useSnapshotHistory,
 } from '@/hooks/useDashboard';
 import { CycleGauge } from '@/components/dashboard/CycleGauge';
-import { IndicatorCard } from '@/components/dashboard/IndicatorCard';
-import { FearGreedGauge } from '@/components/dashboard/FearGreedGauge';
 import { MacroPanel } from '@/components/dashboard/MacroPanel';
 import { RainbowChart } from '@/components/dashboard/RainbowChart';
 import { PriceTrendChart } from '@/components/dashboard/PriceTrendChart';
@@ -20,14 +18,11 @@ import { CycleTimeline } from '@/components/dashboard/CycleTimeline';
 import { WeeklyChanges } from '@/components/dashboard/WeeklyChanges';
 import { PhaseHistory } from '@/components/dashboard/PhaseHistory';
 import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
+import { CoreIndicators } from '@/components/dashboard/CoreIndicators';
 import {
-  getStatusLabel,
-  getStatusColor,
-  getPhaseColor,
   mapPhaseToStrategy,
   mapPhaseToAction,
   calculateSignalStrength,
-  INDICATOR_TOOLTIPS,
 } from '@/lib/scoring';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useMemo } from 'react';
