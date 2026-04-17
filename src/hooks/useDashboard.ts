@@ -118,6 +118,32 @@ export function useBtcPriceHistory(days = 365) {
   });
 }
 
+// Full BTC price history, paginated past Supabase's 1000-row default limit.
+export function useFullBtcPriceHistory() {
+  return useQuery({
+    queryKey: ['btc-price-history-full'],
+    queryFn: async (): Promise<HistoricalPoint[]> => {
+      const pageSize = 1000;
+      const all: HistoricalPoint[] = [];
+      let from = 0;
+      for (;;) {
+        const { data, error } = await supabase
+          .from('btc_daily_prices')
+          .select('date, close_usd')
+          .order('date', { ascending: true })
+          .range(from, from + pageSize - 1);
+        if (error) throw error;
+        const page = (data ?? []).map((d) => ({ date: d.date, value: Number(d.close_usd) }));
+        all.push(...page);
+        if (page.length < pageSize) break;
+        from += pageSize;
+      }
+      return all;
+    },
+    staleTime: 30 * 60 * 1000,
+  });
+}
+
 export function useMacroHistory(days = 365) {
   return useQuery({
     queryKey: ['macro-history', days],
