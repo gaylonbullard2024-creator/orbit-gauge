@@ -38,9 +38,10 @@ const BAND_MULTIPLIERS = [
 ];
 
 const RANGES = [
-  { label: '3M', days: 90 },
   { label: '6M', days: 180 },
   { label: '1Y', days: 365 },
+  { label: '2Y', days: 730 },
+  { label: '5Y', days: 1825 },
   { label: 'All', days: 0 },
 ] as const;
 
@@ -79,7 +80,7 @@ function generateBands(priceHistory: HistoricalPoint[]) {
 }
 
 export function RainbowChart({ priceHistory, currentBand }: RainbowChartProps) {
-  const [range, setRange] = useState<string>('1Y');
+  const [range, setRange] = useState<string>('All');
 
   const cutoffDate = useMemo(() => {
     const r = RANGES.find((r) => r.label === range);
