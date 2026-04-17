@@ -19,6 +19,8 @@ import { CycleTimeline } from '@/components/dashboard/CycleTimeline';
 import { WeeklyChanges } from '@/components/dashboard/WeeklyChanges';
 import { PhaseHistory } from '@/components/dashboard/PhaseHistory';
 import { Button } from '@/components/ui/button';
+import { useAuth } from '@/lib/auth';
+import { LogOut } from 'lucide-react';
 import {
   getStatusLabel,
   getStatusColor,
@@ -32,7 +34,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useMemo } from 'react';
 
 export default function Dashboard() {
-  // Auth removed — dashboard is public
+  const { user, signOut } = useAuth();
   const { data: snapshot, isLoading } = useLatestSnapshot();
   const { data: prevSnapshot } = usePreviousSnapshot();
   const { data: report } = useLatestWeeklyReport();
@@ -98,6 +100,17 @@ export default function Dashboard() {
             </div>
             <h1 className="text-sm sm:text-lg font-semibold">MCG Bitcoin Cycle Dashboard</h1>
           </div>
+          {user && (
+            <div className="flex items-center gap-2 sm:gap-3">
+              <span className="hidden sm:inline text-xs text-muted-foreground truncate max-w-[200px]">
+                {user.email}
+              </span>
+              <Button variant="ghost" size="sm" onClick={signOut} className="gap-1.5">
+                <LogOut className="h-4 w-4" />
+                <span className="hidden sm:inline">Sign out</span>
+              </Button>
+            </div>
+          )}
         </div>
       </header>
 
