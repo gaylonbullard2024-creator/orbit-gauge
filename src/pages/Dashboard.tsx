@@ -255,7 +255,7 @@ export default function Dashboard() {
 
         {/* Rainbow Chart */}
         <section>
-          <RainbowChart priceHistory={btcHistory ?? []} currentBand={snapshot?.rainbow_band ?? null} />
+          <RainbowChart priceHistory={btcFullHistory ?? btcHistory ?? []} currentBand={snapshot?.rainbow_band ?? null} />
         </section>
         {!isLoading && snapshot && prevSnapshot && (
           <section>
