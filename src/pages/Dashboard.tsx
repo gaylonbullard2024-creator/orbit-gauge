@@ -5,6 +5,7 @@ import {
   useLatestWeeklyReport,
   useFearGreedHistory,
   useBtcPriceHistory,
+  useFullBtcPriceHistory,
   useSnapshotHistory,
 } from '@/hooks/useDashboard';
 import { CycleGauge } from '@/components/dashboard/CycleGauge';
@@ -18,6 +19,7 @@ import { WeeklySummaryCard } from '@/components/dashboard/WeeklySummaryCard';
 import { CycleTimeline } from '@/components/dashboard/CycleTimeline';
 import { WeeklyChanges } from '@/components/dashboard/WeeklyChanges';
 import { PhaseHistory } from '@/components/dashboard/PhaseHistory';
+import { UserGuide } from '@/components/dashboard/UserGuide';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/lib/auth';
 import { LogOut } from 'lucide-react';
@@ -40,6 +42,7 @@ export default function Dashboard() {
   const { data: report } = useLatestWeeklyReport();
   const { data: fgHistory } = useFearGreedHistory();
   const { data: btcHistory } = useBtcPriceHistory();
+  const { data: btcFullHistory } = useFullBtcPriceHistory();
   const { data: snapHistory } = useSnapshotHistory();
 
   const hasMvrv = snapshot?.mvrv_score != null;
@@ -100,17 +103,20 @@ export default function Dashboard() {
             </div>
             <h1 className="text-sm sm:text-lg font-semibold">MCG Bitcoin Cycle Dashboard</h1>
           </div>
-          {user && (
-            <div className="flex items-center gap-2 sm:gap-3">
-              <span className="hidden sm:inline text-xs text-muted-foreground truncate max-w-[200px]">
-                {user.email}
-              </span>
-              <Button variant="ghost" size="sm" onClick={signOut} className="gap-1.5">
-                <LogOut className="h-4 w-4" />
-                <span className="hidden sm:inline">Sign out</span>
-              </Button>
-            </div>
-          )}
+          <div className="flex items-center gap-1 sm:gap-2">
+            <UserGuide />
+            {user && (
+              <>
+                <span className="hidden sm:inline text-xs text-muted-foreground truncate max-w-[200px]">
+                  {user.email}
+                </span>
+                <Button variant="ghost" size="sm" onClick={signOut} className="gap-1.5">
+                  <LogOut className="h-4 w-4" />
+                  <span className="hidden sm:inline">Sign out</span>
+                </Button>
+              </>
+            )}
+          </div>
         </div>
       </header>
 
