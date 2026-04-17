@@ -19,7 +19,6 @@ import { WeeklySummaryCard } from '@/components/dashboard/WeeklySummaryCard';
 import { CycleTimeline } from '@/components/dashboard/CycleTimeline';
 import { WeeklyChanges } from '@/components/dashboard/WeeklyChanges';
 import { PhaseHistory } from '@/components/dashboard/PhaseHistory';
-import { UserGuide } from '@/components/dashboard/UserGuide';
 import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
 import {
   getStatusLabel,
