@@ -20,9 +20,7 @@ import { CycleTimeline } from '@/components/dashboard/CycleTimeline';
 import { WeeklyChanges } from '@/components/dashboard/WeeklyChanges';
 import { PhaseHistory } from '@/components/dashboard/PhaseHistory';
 import { UserGuide } from '@/components/dashboard/UserGuide';
-import { Button } from '@/components/ui/button';
-import { useAuth } from '@/lib/auth';
-import { LogOut } from 'lucide-react';
+import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
 import {
   getStatusLabel,
   getStatusColor,
