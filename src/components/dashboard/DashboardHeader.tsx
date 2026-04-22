@@ -1,7 +1,8 @@
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/lib/auth';
-import { LogOut } from 'lucide-react';
+import { LogOut, Code2 } from 'lucide-react';
 import { UserGuide } from '@/components/dashboard/UserGuide';
+import { Link } from 'react-router-dom';
 
 export function DashboardHeader() {
   const { user, signOut } = useAuth();
@@ -16,6 +17,12 @@ export function DashboardHeader() {
           <h1 className="text-sm sm:text-lg font-semibold">MCG Bitcoin Cycle Dashboard</h1>
         </div>
         <div className="flex items-center gap-1 sm:gap-2">
+          <Button asChild variant="ghost" size="sm" className="gap-1.5">
+            <Link to="/api">
+              <Code2 className="h-4 w-4" />
+              <span className="hidden sm:inline">API</span>
+            </Link>
+          </Button>
           <UserGuide />
           {user && (
             <>
