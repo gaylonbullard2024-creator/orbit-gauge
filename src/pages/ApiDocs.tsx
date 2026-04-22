@@ -1,7 +1,8 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
 import { Button } from '@/components/ui/button';
-import { Check, Copy } from 'lucide-react';
+import { ArrowLeft, Check, Copy } from 'lucide-react';
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string;
 const API_BASE = `${SUPABASE_URL}/functions/v1/public-api`;
@@ -60,11 +61,19 @@ export default function ApiDocs() {
     <div className="min-h-screen bg-background">
       <DashboardHeader />
       <main className="mx-auto max-w-4xl px-4 py-8 space-y-10">
-        <header>
-          <h1 className="text-3xl font-bold tracking-tight">Public API & Embeddable Widget</h1>
-          <p className="mt-2 text-muted-foreground">
-            Use the Bitcoin Cycle Dashboard data on your own site. Free, no key required, JSON over HTTPS, CORS enabled.
-          </p>
+        <header className="space-y-4">
+          <Button asChild variant="outline" size="sm" className="gap-1.5">
+            <Link to="/">
+              <ArrowLeft className="h-4 w-4" />
+              Back to Dashboard
+            </Link>
+          </Button>
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Public API & Embeddable Widget</h1>
+            <p className="mt-2 text-muted-foreground">
+              Use the Bitcoin Cycle Dashboard data on your own site. Free, no key required, JSON over HTTPS, CORS enabled.
+            </p>
+          </div>
         </header>
 
         <section className="space-y-3">
