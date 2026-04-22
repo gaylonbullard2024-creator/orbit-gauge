@@ -129,8 +129,35 @@ Deno.serve(async (req) => {
             'GET /macro?days=365': 'Macro (DXY) history',
             'GET /weekly-report': 'Latest weekly commentary',
             'GET /all?days=365': 'Everything in one response',
+            'GET /health': 'Service status and last snapshot timestamp',
           },
           docs: 'https://orbit-gauge.lovable.app/api',
+        });
+      }
+      case 'health': {
+        const started = Date.now();
+        const { data, error } = await supabase
+          .from('dashboard_snapshots')
+          .select('date, updated_at')
+          .order('date', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        const latencyMs = Date.now() - started;
+        if (error) {
+          return json({ status: 'degraded', error: error.message, latencyMs }, 503);
+        }
+        const lastDate = data?.date ?? null;
+        const ageHours = lastDate
+          ? (Date.now() - new Date(lastDate + 'T00:00:00Z').getTime()) / 3_600_000
+          : null;
+        const stale = ageHours == null || ageHours > 36;
+        return json({
+          status: stale ? 'stale' : 'ok',
+          lastSnapshotDate: lastDate,
+          lastSnapshotUpdatedAt: data?.updated_at ?? null,
+          ageHours: ageHours != null ? Number(ageHours.toFixed(2)) : null,
+          latencyMs,
+          time: new Date().toISOString(),
         });
       }
       case 'latest':

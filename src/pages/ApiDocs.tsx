@@ -16,6 +16,7 @@ const ENDPOINTS: { method: string; path: string; desc: string }[] = [
   { method: 'GET', path: '/macro?days=365', desc: 'Macro (DXY) history' },
   { method: 'GET', path: '/weekly-report', desc: 'Latest weekly commentary' },
   { method: 'GET', path: '/all?days=365', desc: 'Everything in one response' },
+  { method: 'GET', path: '/health', desc: 'Service status and last snapshot timestamp' },
 ];
 
 function CodeBlock({ code }: { code: string }) {
