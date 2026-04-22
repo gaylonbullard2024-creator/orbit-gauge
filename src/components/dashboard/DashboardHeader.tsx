@@ -10,12 +10,12 @@ export function DashboardHeader() {
   return (
     <header className="sticky top-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur">
       <div className="mx-auto flex max-w-6xl items-center justify-between px-3 py-2 sm:px-4 sm:py-3">
-        <div className="flex items-center gap-2 sm:gap-3">
+        <Link to="/" className="flex items-center gap-2 sm:gap-3 hover:opacity-80 transition-opacity">
           <div className="flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-lg bg-primary/10">
             <span className="text-base sm:text-lg font-bold text-primary">₿</span>
           </div>
           <h1 className="text-sm sm:text-lg font-semibold">MCG Bitcoin Cycle Dashboard</h1>
-        </div>
+        </Link>
         <div className="flex items-center gap-1 sm:gap-2">
           <Button asChild variant="ghost" size="sm" className="gap-1.5">
             <Link to="/api">
