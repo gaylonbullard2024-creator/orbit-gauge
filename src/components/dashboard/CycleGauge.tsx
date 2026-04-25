@@ -33,7 +33,16 @@ export function CycleGauge({ score, maxScore, phase, strategy, action, signalStr
       {/* Gauge SVG — large hero */}
       <div className="relative w-full max-w-lg aspect-[2/1]">
         <svg viewBox="0 0 200 110" className="w-full h-full">
-          {/* Background arcs */}
+          {/* Background full arc track */}
+          <path
+            d="M 20 100 A 80 80 0 0 1 180 100"
+            fill="none"
+            stroke="hsl(var(--muted))"
+            strokeWidth="22"
+            strokeLinecap="butt"
+            opacity="0.35"
+          />
+          {/* Colored phase arcs — full saturation always */}
           {PHASES.map((p, i) => {
             const startAngle = -90 + (i * 180) / 5;
             const endAngle = -90 + ((i + 1) * 180) / 5;
@@ -46,15 +55,16 @@ export function CycleGauge({ score, maxScore, phase, strategy, action, signalStr
             const y1 = cy + r * Math.sin(startRad);
             const x2 = cx + r * Math.cos(endRad);
             const y2 = cy + r * Math.sin(endRad);
+            const isActive = p.label === phase;
             return (
               <path
                 key={p.label}
                 d={`M ${x1} ${y1} A ${r} ${r} 0 0 1 ${x2} ${y2}`}
                 fill="none"
                 stroke={p.color}
-                strokeWidth="20"
+                strokeWidth={isActive ? 22 : 18}
                 strokeLinecap="butt"
-                opacity={p.label === phase ? 1 : 0.25}
+                opacity={isActive ? 1 : 0.9}
               />
             );
           })}
