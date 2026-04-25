@@ -44,8 +44,8 @@ export function CycleGauge({ score, maxScore, phase, strategy, action, signalStr
           />
           {/* Colored phase arcs — full saturation always */}
           {PHASES.map((p, i) => {
-            const startAngle = -90 + (i * 180) / 5;
-            const endAngle = -90 + ((i + 1) * 180) / 5;
+            const startAngle = 180 + (i * 180) / 5;
+            const endAngle = 180 + ((i + 1) * 180) / 5;
             const startRad = (startAngle * Math.PI) / 180;
             const endRad = (endAngle * Math.PI) / 180;
             const r = 80;
