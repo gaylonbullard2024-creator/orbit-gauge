@@ -113,6 +113,11 @@ export default function Dashboard() {
           )}
         </section>
 
+        {/* Score Breakdown — components driving the gauge */}
+        {!isLoading && snapshot && (
+          <ScoreBreakdown snapshot={snapshot} totalScore={totalScore} maxScore={maxScore} />
+        )}
+
         {/* Weekly Summary */}
         {!isLoading && snapshot && (
           <section>
