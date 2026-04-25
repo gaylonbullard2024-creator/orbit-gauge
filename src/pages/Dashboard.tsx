@@ -92,7 +92,7 @@ export default function Dashboard() {
         {/* Hero Cycle Gauge */}
         <section className="rounded-2xl border border-border/50 bg-card/50 p-4 sm:p-6 md:p-10">
           <h2 className="text-center text-sm font-medium uppercase tracking-widest text-muted-foreground mb-6">
-            Bitcoin Market Signal
+            Bitcoin Cycle Gauge
           </h2>
           {isLoading ? (
             <div className="flex flex-col items-center gap-4">
