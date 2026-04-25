@@ -120,19 +120,48 @@ export function CycleGauge({ score, maxScore, phase, strategy, action, signalStr
         </div>
       </div>
 
-      {/* Phase legend */}
-      <div className="flex flex-wrap justify-center gap-3">
-        {PHASES.map((p) => (
-          <div key={p.label} className="flex items-center gap-1.5 text-xs">
-            <div
-              className="h-2.5 w-2.5 rounded-full"
-              style={{ backgroundColor: p.color, opacity: p.label === phase ? 1 : 0.4 }}
-            />
-            <span className={p.label === phase ? 'text-foreground font-medium' : 'text-muted-foreground'}>
-              {p.label}
-            </span>
-          </div>
-        ))}
+      {/* Phase legend with explanations */}
+      <div className="w-full max-w-3xl mt-2">
+        <h3 className="text-[11px] font-medium uppercase tracking-widest text-muted-foreground mb-3 text-center">
+          What Each Phase Means
+        </h3>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2">
+          {PHASES.map((p) => {
+            const isActive = p.label === phase;
+            const meaning: Record<string, { range: string; desc: string }> = {
+              'Deep Value': { range: '0–4', desc: 'Extreme bear. Generational accumulation zone.' },
+              'Accumulation': { range: '5–7', desc: 'Recovery underway. Build positions on dips.' },
+              'Bull Market': { range: '8–10', desc: 'Uptrend confirmed. Hold and ride momentum.' },
+              'Overheated': { range: '11–13', desc: 'Euphoria rising. Begin trimming exposure.' },
+              'Cycle Top Risk': { range: '14–20', desc: 'Distribution zone. Take profits aggressively.' },
+            };
+            const info = meaning[p.label];
+            return (
+              <div
+                key={p.label}
+                className={`rounded-lg border p-3 transition-all ${
+                  isActive ? 'border-border bg-card' : 'border-border/40 bg-card/30'
+                }`}
+                style={isActive ? { borderColor: p.color + '66' } : undefined}
+              >
+                <div className="flex items-center gap-2 mb-1.5">
+                  <span
+                    className="h-2.5 w-2.5 rounded-full shrink-0"
+                    style={{ backgroundColor: p.color, opacity: isActive ? 1 : 0.7 }}
+                  />
+                  <span
+                    className="text-xs font-semibold"
+                    style={{ color: isActive ? p.color : undefined }}
+                  >
+                    {p.label}
+                  </span>
+                </div>
+                <div className="font-mono text-[10px] text-muted-foreground mb-1">Score {info.range}</div>
+                <p className="text-[11px] leading-snug text-muted-foreground">{info.desc}</p>
+              </div>
+            );
+          })}
+        </div>
       </div>
     </div>
   );
