@@ -19,6 +19,7 @@ import { WeeklyChanges } from '@/components/dashboard/WeeklyChanges';
 import { PhaseHistory } from '@/components/dashboard/PhaseHistory';
 import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
 import { CoreIndicators } from '@/components/dashboard/CoreIndicators';
+import { ScoreBreakdown } from '@/components/dashboard/ScoreBreakdown';
 import {
   mapPhaseToStrategy,
   mapPhaseToAction,
@@ -111,6 +112,11 @@ export default function Dashboard() {
             />
           )}
         </section>
+
+        {/* Score Breakdown — components driving the gauge */}
+        {!isLoading && snapshot && (
+          <ScoreBreakdown snapshot={snapshot} totalScore={totalScore} maxScore={maxScore} />
+        )}
 
         {/* Weekly Summary */}
         {!isLoading && snapshot && (
