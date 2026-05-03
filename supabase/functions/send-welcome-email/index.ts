@@ -86,7 +86,7 @@ Deno.serve(async (req) => {
       body: JSON.stringify({
         personalizations: [{ to: [{ email }] }],
         from: { email: FROM_EMAIL, name: FROM_NAME },
-        subject: 'Welcome to the Bitcoin Cycle Dashboard',
+        subject: 'Welcome to Orbit Gauge — your Bitcoin cycle edge',
         content: [{ type: 'text/html', value: welcomeHtml(name || '') }],
       }),
     });
