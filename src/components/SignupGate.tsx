@@ -64,6 +64,15 @@ export function SignupGate({ onUnlock }: { onUnlock: (email: string) => void }) 
       return;
     }
 
+    // Fire-and-forget welcome email (don't block unlock if it's slow)
+    if (!error) {
+      supabase.functions
+        .invoke('send-welcome-email', {
+          body: { email: parsed.data.email, name: parsed.data.name },
+        })
+        .catch((e) => console.error('welcome email failed', e));
+    }
+
     onUnlock(parsed.data.email);
   }
 
