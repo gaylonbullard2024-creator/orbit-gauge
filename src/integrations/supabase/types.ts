@@ -143,6 +143,8 @@ export type Database = {
           phone: string
           referrer: string | null
           source: string
+          unsubscribe_token: string
+          unsubscribed_at: string | null
           user_agent: string | null
         }
         Insert: {
@@ -153,6 +155,8 @@ export type Database = {
           phone: string
           referrer?: string | null
           source?: string
+          unsubscribe_token?: string
+          unsubscribed_at?: string | null
           user_agent?: string | null
         }
         Update: {
@@ -163,6 +167,8 @@ export type Database = {
           phone?: string
           referrer?: string | null
           source?: string
+          unsubscribe_token?: string
+          unsubscribed_at?: string | null
           user_agent?: string | null
         }
         Relationships: []
@@ -238,6 +244,41 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      weekly_email_log: {
+        Row: {
+          error: string | null
+          id: string
+          lead_id: string
+          sent_at: string
+          status: string
+          week_ending: string
+        }
+        Insert: {
+          error?: string | null
+          id?: string
+          lead_id: string
+          sent_at?: string
+          status: string
+          week_ending: string
+        }
+        Update: {
+          error?: string | null
+          id?: string
+          lead_id?: string
+          sent_at?: string
+          status?: string
+          week_ending?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "weekly_email_log_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       weekly_reports: {
         Row: {
