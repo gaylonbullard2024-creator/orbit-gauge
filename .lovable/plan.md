@@ -1,74 +1,77 @@
-# Lead-Capture Signup Gate
+# Welcome Email + Weekly BTC Report (SendGrid)
 
-Add a frictionless signup form that collects **Name, Email, Phone** before granting access to the dashboard. No password, no email verification — instant access after submit. Leads stored in a new `leads` table in Lovable Cloud.
+Send a welcome email the moment a visitor signs up for free dashboard access, then a weekly BTC market report every Monday at 9 AM ET. Both use your SendGrid account. Every weekly email has a one-click unsubscribe link.
 
-## User Flow
+## What you need to provide
+
+1. **SendGrid API key** — I'll prompt you to paste it into a secure secrets form. Stored as `SENDGRID_API_KEY` and only readable by backend functions.
+2. **Verified sender** in SendGrid — an email address (e.g. `welcome@thecryptoinvestors.com`) and From name (e.g. "The Crypto Investors") that's already verified in your SendGrid Sender Authentication. If your domain isn't verified yet, do that in SendGrid first or emails will bounce.
+
+That's it — I handle the rest.
+
+## User flow
 
 ```text
-Visitor lands on /  ──►  Signup gate shown
+Visitor submits signup form
        │
-       ├─ Fills Name + Email + Phone
-       ├─ Clicks "Get Free Access"
-       │
-       ▼
-Lead saved to DB  +  flag set in localStorage
-       │
-       ▼
-Dashboard unlocks (and stays unlocked on this device)
-```
+       ├─► Lead saved to DB (existing)
+       ├─► Welcome email sent immediately via SendGrid
+       └─► Dashboard unlocks (existing)
 
-Returning visitors on the same device skip the gate automatically.
+Every Monday 9 AM ET (cron)
+       │
+       ├─► Pull latest dashboard snapshot + week-over-week deltas + commentary
+       ├─► For each subscribed lead → send weekly report
+       └─► Skip anyone who clicked unsubscribe
+```
 
 ## What gets built
 
-### 1. Database
-A new `leads` table in Lovable Cloud:
-- `name` (text, required)
-- `email` (text, required, lowercased)
-- `phone` (text, required)
-- `source` (text, default `'dashboard_signup'`) — for future campaigns
-- `user_agent`, `referrer` (text, optional, for analytics)
-- standard `id`, `created_at`
+### 1. Database changes
+- Add `unsubscribed_at` (timestamptz, nullable) and `unsubscribe_token` (uuid, unique) columns to the existing `leads` table. Token auto-generated for every lead (existing + new).
+- Add `weekly_email_log` table to track sends (lead_id, week_ending, status, sent_at, error) — prevents duplicates and lets you see delivery history.
 
-Access rules:
-- **Anyone (anonymous) can insert** a lead — needed for the public form.
-- **No one can read/update/delete** from the client. Leads are private; you'll view/export them via the backend.
-- Email format validation + basic length limits enforced via a CHECK constraint and zod on the client.
-- Unique index on `lower(email)` so the same email isn't stored twice (re-submissions silently succeed).
+### 2. Edge functions (3 new)
+- **`send-welcome-email`** — called from the signup form right after the lead is inserted. Sends a single welcome email via SendGrid with name personalization and a link back to the dashboard.
+- **`send-weekly-report`** — pulls latest snapshot + previous week snapshot + latest weekly commentary, builds the HTML, then loops over all non-unsubscribed leads and sends via SendGrid (batched, with the unsubscribe link injected per recipient). Logs each send to `weekly_email_log`.
+- **`unsubscribe`** — public endpoint that accepts the token from the email link, marks the lead as unsubscribed, and returns a simple branded confirmation page.
 
-### 2. Signup gate UI
-New component `src/components/SignupGate.tsx`:
-- Centered card matching the institutional dark theme (charcoal bg, BTC orange accent).
-- Headline: **"Get Free Access to the Bitcoin Cycle Dashboard"**
-- Subhead: short value prop (cycle gauge, weekly insights, etc.)
-- Three fields: Name, Email, Phone (with country-friendly input).
-- Primary CTA button: **"Get Free Access"** (BTC orange).
-- Inline validation via zod; errors shown under each field.
-- Tiny disclaimer: "We'll only email you about Bitcoin cycle updates."
+### 3. Cron job
+- Schedule `send-weekly-report` to run every **Monday at 14:00 UTC (9 AM ET)** using `pg_cron` + `pg_net`.
 
-### 3. Gate logic
-New hook `src/hooks/useLeadGate.ts`:
-- Reads `localStorage` key `mcg_lead_captured` (stores `{ email, ts }`).
-- Exposes `isUnlocked` + `unlock(lead)` helpers.
-- On submit: insert into `leads` → set localStorage → unlock instantly.
-- If insert fails (network/duplicate), still unlock if duplicate; otherwise show toast.
+### 4. Frontend wiring
+- `SignupGate.tsx`: after a successful insert, fire-and-forget call to `send-welcome-email` (won't block the unlock if email is slow).
+- New `/unsubscribe` route that hits the unsubscribe edge function and shows a "You've been unsubscribed" confirmation matching the dark theme.
 
-### 4. Wiring into the app
-- `src/pages/Index.tsx` (or wherever `Dashboard` renders) wraps the dashboard with the gate: if `!isUnlocked`, render `<SignupGate />`; else render the dashboard.
-- A small "Reset access" link is **not** added — users can clear storage themselves; this keeps friction low.
+### 5. Email design
+Both emails match the dashboard's institutional dark aesthetic — charcoal background, white text, BTC orange accents — and render correctly in Gmail/Outlook (table-based layout, inline styles).
 
-### 5. Embedded-widget consideration
-The dashboard is embedded on your website via `public/widget.js`. The gate works the same in the iframe — each visitor gets prompted once per device, then sees the dashboard.
+**Welcome email contents:**
+- Subject: "Welcome to the Bitcoin Cycle Dashboard"
+- Greeting with their name
+- Quick summary of what they get (cycle gauge, indicators, weekly report)
+- Big "Open Dashboard" button → `https://app.thecryptoinvestors.com`
 
-## Out of scope (can be added later)
-- Email verification / magic links
-- CRM/Mailchimp/HubSpot forwarding
-- Email notification to you on each new lead
-- Admin UI to browse leads (for now: view via Lovable Cloud → Database → `leads` table, or export CSV)
+**Weekly report contents (per your choice — Summary + commentary):**
+- Subject: "BTC Weekly: [Phase] — Cycle Score [X]/20"
+- Current cycle phase + 0–20 score
+- BTC price + week-over-week % change
+- Your weekly commentary (headline + summary from `weekly_reports` table)
+- "View full dashboard" button
+- Footer with one-click **Unsubscribe** link
 
-## Technical notes
-- Phone is stored as free-form text (no E.164 normalization) to keep friction low; basic length check 7–20 chars.
-- Email stored lowercased; unique index on `lower(email)` prevents duplicates.
-- Insert uses the Supabase JS client with the anon key — RLS allows insert only.
-- `localStorage` gate is intentionally client-side and bypassable; this is a **lead-capture gate**, not a security boundary. All dashboard data tables already allow public read, so no data is being newly exposed.
-- No changes to existing auth (admin login on `/auth` remains for weekly-commentary editing).
+## DST note
+Cron runs at a fixed UTC time (14:00). That's 9 AM ET during Eastern Daylight Time and 10 AM ET during Eastern Standard Time. If you want it to always be exactly 9 AM ET year-round, I can add logic to skip/shift in winter — let me know.
+
+## Out of scope (for now)
+- Bounce/complaint webhooks (SendGrid can post these back; can be added later)
+- Email open/click tracking analytics
+- Resend of welcome email if delivery fails (one-shot only)
+- Per-user weekly summary timing preferences
+
+## Technical notes (for reference)
+- SendGrid sent via REST API (`https://api.sendgrid.com/v3/mail/send`) directly from edge functions — no SDK dependency
+- Each weekly send batched in groups of ~500 recipients with `personalizations` to inject per-lead unsubscribe links
+- `weekly_email_log` has unique `(lead_id, week_ending)` to make the cron idempotent — re-running the same week won't double-send
+- Unsubscribe link format: `https://app.thecryptoinvestors.com/unsubscribe?token=<uuid>` — token is opaque, not guessable, no auth required
+- RLS: `unsubscribed_at` and `unsubscribe_token` remain admin-readable only (matches existing leads policy)
