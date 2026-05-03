@@ -1,4 +1,7 @@
-import { corsHeaders } from '@supabase/supabase-js/cors';
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
 
 const SENDGRID_API_KEY = Deno.env.get('SENDGRID_API_KEY')!;
 const FROM_EMAIL = Deno.env.get('SENDGRID_FROM_EMAIL')!;
