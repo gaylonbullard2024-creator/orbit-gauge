@@ -216,4 +216,5 @@ export const INDICATOR_TOOLTIPS: Record<string, string> = {
   '200W Moving Avg': 'Long-term trend support level based on 200-week moving average',
   'Rainbow Model': 'Logarithmic price band model for cycle positioning',
   'Macro / DXY': 'US Dollar strength index — lower DXY is generally better for BTC',
+  'Power Law': 'Z-score of BTC price vs Burger/PlanB power-law fair value (log-log regression)',
 };
