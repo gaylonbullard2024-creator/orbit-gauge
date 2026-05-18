@@ -118,12 +118,15 @@ export function useBtcPriceHistory(days = 365) {
   });
 }
 
-// Full BTC price history, paginated past Supabase's 1000-row default limit.
+// Full BTC price history. Paginates with larger page size to minimise round-trips.
+// Power Law / Rainbow only need history from BTC genesis era (~2011+), which is
+// covered fully by the dataset; pagination remains as a safety net.
 export function useFullBtcPriceHistory() {
   return useQuery({
     queryKey: ['btc-price-history-full'],
     queryFn: async (): Promise<HistoricalPoint[]> => {
-      const pageSize = 1000;
+      // Supabase caps select responses at 1000 rows by default; request larger pages explicitly.
+      const pageSize = 5000;
       const all: HistoricalPoint[] = [];
       let from = 0;
       for (;;) {
@@ -141,6 +144,7 @@ export function useFullBtcPriceHistory() {
       return all;
     },
     staleTime: 30 * 60 * 1000,
+    gcTime: 60 * 60 * 1000,
   });
 }
 
