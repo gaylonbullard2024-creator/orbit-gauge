@@ -21,6 +21,7 @@ import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
 import { CoreIndicators } from '@/components/dashboard/CoreIndicators';
 import { ScoreBreakdown } from '@/components/dashboard/ScoreBreakdown';
 import { PowerLawChart } from '@/components/dashboard/PowerLawChart';
+import { PowerLawBacktest } from '@/components/dashboard/PowerLawBacktest';
 import {
   mapPhaseToStrategy,
   mapPhaseToAction,
@@ -161,6 +162,11 @@ export default function Dashboard() {
         {/* Power Law */}
         <section>
           <PowerLawChart priceHistory={btcFullHistory ?? btcHistory ?? []} />
+        </section>
+
+        {/* Power Law Backtest */}
+        <section>
+          <PowerLawBacktest priceHistory={btcFullHistory ?? btcHistory ?? []} />
         </section>
         {!isLoading && snapshot && prevSnapshot && (
           <section>
