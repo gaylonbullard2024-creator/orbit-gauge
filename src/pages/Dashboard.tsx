@@ -14,21 +14,37 @@ import { RainbowChart } from '@/components/dashboard/RainbowChart';
 import { PriceTrendChart } from '@/components/dashboard/PriceTrendChart';
 import { WeeklyCommentary } from '@/components/dashboard/WeeklyCommentary';
 import { WeeklySummaryCard } from '@/components/dashboard/WeeklySummaryCard';
-import { CycleTimeline } from '@/components/dashboard/CycleTimeline';
 import { WeeklyChanges } from '@/components/dashboard/WeeklyChanges';
-import { PhaseHistory } from '@/components/dashboard/PhaseHistory';
 import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
 import { CoreIndicators } from '@/components/dashboard/CoreIndicators';
 import { ScoreBreakdown } from '@/components/dashboard/ScoreBreakdown';
-import { PowerLawChart } from '@/components/dashboard/PowerLawChart';
-import { PowerLawBacktest } from '@/components/dashboard/PowerLawBacktest';
 import {
   mapPhaseToStrategy,
   mapPhaseToAction,
   calculateSignalStrength,
 } from '@/lib/scoring';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useMemo } from 'react';
+import { useMemo, lazy, Suspense } from 'react';
+
+// Lazy-load below-the-fold heavy chart components to shrink initial JS and defer Recharts work.
+const CycleTimeline = lazy(() =>
+  import('@/components/dashboard/CycleTimeline').then((m) => ({ default: m.CycleTimeline }))
+);
+const PowerLawChart = lazy(() =>
+  import('@/components/dashboard/PowerLawChart').then((m) => ({ default: m.PowerLawChart }))
+);
+const PowerLawBacktest = lazy(() =>
+  import('@/components/dashboard/PowerLawBacktest').then((m) => ({ default: m.PowerLawBacktest }))
+);
+const PhaseHistory = lazy(() =>
+  import('@/components/dashboard/PhaseHistory').then((m) => ({ default: m.PhaseHistory }))
+);
+
+const ChartFallback = () => (
+  <div className="rounded-2xl border border-border/50 bg-card/50 p-4">
+    <Skeleton className="h-64 w-full" />
+  </div>
+);
 
 export default function Dashboard() {
   const { data: snapshot, isLoading } = useLatestSnapshot();
