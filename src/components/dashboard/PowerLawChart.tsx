@@ -72,7 +72,7 @@ export function PowerLawChart({ priceHistory }: PowerLawChartProps) {
           band_p2_p3: [pl.bands.p2, pl.bands.p3],
         };
       })
-      .filter(Boolean) as Array<Record<string, number | string | [number, number]>>;
+      .filter(Boolean) as Array<Record<string, unknown>>;
   }, [priceHistory, cutoffDate]);
 
   const latest = priceHistory[priceHistory.length - 1];
