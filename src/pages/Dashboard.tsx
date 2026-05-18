@@ -20,6 +20,7 @@ import { PhaseHistory } from '@/components/dashboard/PhaseHistory';
 import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
 import { CoreIndicators } from '@/components/dashboard/CoreIndicators';
 import { ScoreBreakdown } from '@/components/dashboard/ScoreBreakdown';
+import { PowerLawChart } from '@/components/dashboard/PowerLawChart';
 import {
   mapPhaseToStrategy,
   mapPhaseToAction,
@@ -155,6 +156,11 @@ export default function Dashboard() {
         {/* Rainbow Chart */}
         <section>
           <RainbowChart priceHistory={btcFullHistory ?? btcHistory ?? []} currentBand={snapshot?.rainbow_band ?? null} />
+        </section>
+
+        {/* Power Law */}
+        <section>
+          <PowerLawChart priceHistory={btcFullHistory ?? btcHistory ?? []} />
         </section>
         {!isLoading && snapshot && prevSnapshot && (
           <section>
