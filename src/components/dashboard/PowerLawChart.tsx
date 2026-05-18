@@ -304,21 +304,23 @@ export function PowerLawChart({ priceHistory }: PowerLawChartProps) {
 
         {/* Legend */}
         {pl && (
-          <div className="mt-3 space-y-2">
-            {/* Sigma bands */}
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
-              <span className="text-muted-foreground/70 text-[10px] uppercase tracking-wider mr-1">Bands:</span>
-              <LegendDot color={COLORS.fair} label="Fair Value" dash />
-              <LegendDot color={COLORS.dn1} label="−1σ" />
-              <LegendDot color={COLORS.dn2} label="−2σ" />
-              <LegendDot color={COLORS.dn3} label="−3σ" />
-              <LegendDot color={COLORS.up1} label="+1σ" />
-              <LegendDot color={COLORS.up2} label="+2σ" />
-              <LegendDot color={COLORS.up3} label="+3σ" />
-              <LegendDot color={COLORS.price} label="BTC Price" />
+          <div className="mt-2 sm:mt-3 space-y-2">
+            {/* Sigma bands legend */}
+            <div className="flex flex-wrap items-center gap-x-2 sm:gap-x-3 gap-y-1 text-xs">
+              <span className="text-muted-foreground/70 text-[9px] sm:text-[10px] uppercase tracking-wider shrink-0">Bands:</span>
+              <div className="flex flex-wrap gap-x-2 sm:gap-x-3 gap-y-1">
+                <LegendDot color={COLORS.fair} label="Fair" dash />
+                <LegendDot color={COLORS.dn1} label="−1σ" />
+                <LegendDot color={COLORS.dn2} label="−2σ" />
+                <LegendDot color={COLORS.dn3} label="−3σ" />
+                <LegendDot color={COLORS.up1} label="+1σ" />
+                <LegendDot color={COLORS.up2} label="+2σ" />
+                <LegendDot color={COLORS.up3} label="+3σ" />
+                <LegendDot color={COLORS.price} label="Price" />
+              </div>
             </div>
             {/* Price readouts */}
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 text-xs">
+            <div className="grid grid-cols-2 gap-1.5 sm:gap-2 sm:grid-cols-4 text-xs">
               <Readout label="Fair Value" value={pl.fair} color={COLORS.fair} />
               <Readout label="+1σ" value={pl.bands.p1} color={COLORS.up1} />
               <Readout label="+2σ" value={pl.bands.p2} color={COLORS.up2} />
