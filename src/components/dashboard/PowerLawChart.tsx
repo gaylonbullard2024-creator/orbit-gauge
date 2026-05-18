@@ -1,6 +1,6 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Info } from 'lucide-react';
+import { Info, Maximize2, Minimize2 } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import {
   ComposedChart,
@@ -53,8 +53,25 @@ const TOOLTIP_LABELS: Record<string, string> = {
   band_up2_up3: 'Extreme Overvalued (+2σ to +3σ)',
 };
 
+function useIsSmallScreen() {
+  const [isSmall, setIsSmall] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 640px)');
+    setIsSmall(mq.matches);
+    const handler = (e: MediaQueryListEvent) => setIsSmall(e.matches);
+    mq.addEventListener('change', handler);
+    return () => mq.removeEventListener('change', handler);
+  }, []);
+  return isSmall;
+}
+
 export function PowerLawChart({ priceHistory }: PowerLawChartProps) {
+  const isSmallScreen = useIsSmallScreen();
+  const [compact, setCompact] = useState(true);
   const [range, setRange] = useState<string>('All');
+
+  // Auto-enable compact on small screens, but allow manual override
+  const effectiveCompact = isSmallScreen ? compact : false;
 
   const cutoffDate = useMemo(() => {
     const r = RANGES.find((r) => r.label === range);
@@ -82,7 +99,6 @@ export function PowerLawChart({ priceHistory }: PowerLawChartProps) {
           n2: pl.bands.n2,
           p3: pl.bands.p3,
           n3: pl.bands.n3,
-          // stacked-like band ranges for filled Areas
           band_dn3_dn2: [pl.bands.n3, pl.bands.n2],
           band_dn2_dn1: [pl.bands.n2, pl.bands.n1],
           band_dn1_fair: [pl.bands.n1, pl.fair],
@@ -103,6 +119,9 @@ export function PowerLawChart({ priceHistory }: PowerLawChartProps) {
 
   if (data.length < 2) return null;
 
+  const chartHeight = effectiveCompact ? 180 : 300;
+  const chartHeightClass = effectiveCompact ? '' : 'sm:!h-[360px]';
+
   return (
     <Card className="border-border/50 bg-card/80">
       <CardHeader className="pb-2">
@@ -122,6 +141,16 @@ export function PowerLawChart({ priceHistory }: PowerLawChartProps) {
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
+            {/* Compact toggle — only visible on small screens */}
+            {isSmallScreen && (
+              <button
+                onClick={() => setCompact((c) => !c)}
+                className="ml-auto rounded-md border border-border/60 bg-muted/40 p-1 text-muted-foreground hover:bg-muted/80 transition-colors"
+                aria-label={effectiveCompact ? 'Expand' : 'Compact'}
+              >
+                {effectiveCompact ? <Maximize2 className="h-3.5 w-3.5" /> : <Minimize2 className="h-3.5 w-3.5" />}
+              </button>
+            )}
           </div>
           <div className="flex flex-wrap items-center gap-1.5">
             {RANGES.map((r) => (
@@ -152,7 +181,7 @@ export function PowerLawChart({ priceHistory }: PowerLawChartProps) {
         </div>
       </CardHeader>
       <CardContent>
-        <ResponsiveContainer width="100%" height={300} className="sm:!h-[360px]">
+        <ResponsiveContainer width="100%" height={chartHeight} className={chartHeightClass}>
           <ComposedChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
             {/* Bands — bottom to top */}
             <Area dataKey="band_dn3_dn2" stroke="none" fill={COLORS.dn3} fillOpacity={0.18} isAnimationActive={false} activeDot={false} />
@@ -227,8 +256,30 @@ export function PowerLawChart({ priceHistory }: PowerLawChartProps) {
           </ComposedChart>
         </ResponsiveContainer>
 
-        {/* Today's Position Highlight */}
-        {pl && latest && (
+        {/* Compact summary — shown on small screens in compact mode */}
+        {effectiveCompact && pl && latest && (
+          <div className="mt-2 flex items-center justify-between rounded-md bg-card/60 border border-border/30 px-2.5 py-2">
+            <div className="flex items-center gap-3 overflow-x-auto">
+              <CompactStat label="Price" value={`$${latest.value.toLocaleString(undefined, { maximumFractionDigits: 0 })}`} />
+              <CompactStat label="Fair" value={`$${pl.fair.toLocaleString(undefined, { maximumFractionDigits: 0 })}`} color={COLORS.fair} />
+              <CompactStat
+                label="Premium"
+                value={premium != null ? `${premium >= 0 ? '+' : ''}${premium.toFixed(1)}%` : '—'}
+                color={premium != null && premium >= 0 ? 'hsl(0,72%,55%)' : 'hsl(152,60%,45%)'}
+              />
+              <CompactStat label="Z" value={z != null ? `${z.toFixed(2)}σ` : '—'} color={statusColor} />
+            </div>
+            <span
+              className="ml-2 inline-block rounded-full px-2 py-0.5 text-[10px] font-semibold shrink-0"
+              style={{ backgroundColor: statusColor + '22', color: statusColor }}
+            >
+              {status}
+            </span>
+          </div>
+        )}
+
+        {/* Full "Today vs Fair Value" panel — hidden in compact mode */}
+        {!effectiveCompact && pl && latest && (
           <div className="mt-3 sm:mt-4 rounded-lg border border-border/40 bg-card/60 p-2.5 sm:p-3 space-y-2 sm:space-y-3">
             <div className="flex items-center gap-2">
               <div className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
@@ -302,8 +353,8 @@ export function PowerLawChart({ priceHistory }: PowerLawChartProps) {
           </div>
         )}
 
-        {/* Legend */}
-        {pl && (
+        {/* Legend — hidden in compact mode */}
+        {!effectiveCompact && pl && (
           <div className="mt-2 sm:mt-3 space-y-2">
             {/* Sigma bands legend */}
             <div className="flex flex-wrap items-center gap-x-2 sm:gap-x-3 gap-y-1 text-xs">
@@ -334,6 +385,17 @@ export function PowerLawChart({ priceHistory }: PowerLawChartProps) {
         )}
       </CardContent>
     </Card>
+  );
+}
+
+function CompactStat({ label, value, color }: { label: string; value: string; color?: string }) {
+  return (
+    <div className="flex items-center gap-1 shrink-0">
+      <span className="text-[9px] text-muted-foreground/60">{label}</span>
+      <span className="font-mono text-[11px] font-semibold" style={color ? { color } : undefined}>
+        {value}
+      </span>
+    </div>
   );
 }
 
