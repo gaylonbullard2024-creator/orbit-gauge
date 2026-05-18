@@ -161,7 +161,9 @@ export default function Dashboard() {
         {/* Cycle Score Timeline */}
         {snapHistory && snapHistory.length > 1 && (
           <section>
-            <CycleTimeline snapshots={snapHistory} />
+            <Suspense fallback={<ChartFallback />}>
+              <CycleTimeline snapshots={snapHistory} />
+            </Suspense>
           </section>
         )}
 
@@ -177,12 +179,16 @@ export default function Dashboard() {
 
         {/* Power Law */}
         <section>
-          <PowerLawChart priceHistory={btcFullHistory ?? btcHistory ?? []} />
+          <Suspense fallback={<ChartFallback />}>
+            <PowerLawChart priceHistory={btcFullHistory ?? btcHistory ?? []} />
+          </Suspense>
         </section>
 
         {/* Power Law Backtest */}
         <section>
-          <PowerLawBacktest priceHistory={btcFullHistory ?? btcHistory ?? []} />
+          <Suspense fallback={<ChartFallback />}>
+            <PowerLawBacktest priceHistory={btcFullHistory ?? btcHistory ?? []} />
+          </Suspense>
         </section>
         {!isLoading && snapshot && prevSnapshot && (
           <section>
@@ -202,7 +208,9 @@ export default function Dashboard() {
         {/* Phase History */}
         {snapHistory && snapHistory.length > 1 && (
           <section>
-            <PhaseHistory snapshots={snapHistory} />
+            <Suspense fallback={<ChartFallback />}>
+              <PhaseHistory snapshots={snapHistory} />
+            </Suspense>
           </section>
         )}
 
