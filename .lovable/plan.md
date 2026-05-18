@@ -1,77 +1,48 @@
-# Welcome Email + Weekly BTC Report (SendGrid)
+## Add BTC Power Law to Dashboard
 
-Send a welcome email the moment a visitor signs up for free dashboard access, then a weekly BTC market report every Monday at 9 AM ET. Both use your SendGrid account. Every weekly email has a one-click unsubscribe link.
+Add the Power Law model (Burger/PlanB) as a new chart and indicator card on the dashboard, mirroring how Rainbow Chart and the Core Indicators already work.
 
-## What you need to provide
-
-1. **SendGrid API key** — I'll prompt you to paste it into a secure secrets form. Stored as `SENDGRID_API_KEY` and only readable by backend functions.
-2. **Verified sender** in SendGrid — an email address (e.g. `welcome@thecryptoinvestors.com`) and From name (e.g. "The Crypto Investors") that's already verified in your SendGrid Sender Authentication. If your domain isn't verified yet, do that in SendGrid first or emails will bounce.
-
-That's it — I handle the rest.
-
-## User flow
-
-```text
-Visitor submits signup form
-       │
-       ├─► Lead saved to DB (existing)
-       ├─► Welcome email sent immediately via SendGrid
-       └─► Dashboard unlocks (existing)
-
-Every Monday 9 AM ET (cron)
-       │
-       ├─► Pull latest dashboard snapshot + week-over-week deltas + commentary
-       ├─► For each subscribed lead → send weekly report
-       └─► Skip anyone who clicked unsubscribe
+### Formula (computed client-side, no new data needed)
 ```
+days = (today - 2009-01-03) / 86400000
+log10_fv = 5.82 * log10(days) - 17.01
+fair_value = 10^log10_fv
+bands = 10^(log10_fv ± n*0.46)   for n = 1, 2, 3
+z_score = (log10(price) - log10_fv) / 0.46
+```
+Inputs A=5.82, B=−17.01, σ=0.46 stored as constants in `src/lib/powerLaw.ts`.
 
-## What gets built
+### Score mapping (0–4, matches other indicators)
+Based on z-score relative to fair value:
+- z ≥ +2 → 0 (Cycle Top Risk)
+- +1 ≤ z < +2 → 1 (Overheated)
+- −1 ≤ z < +1 → 2 (Fair)
+- −2 ≤ z < −1 → 3 (Accumulation)
+- z < −2 → 4 (Deep Value)
 
-### 1. Database changes
-- Add `unsubscribed_at` (timestamptz, nullable) and `unsubscribe_token` (uuid, unique) columns to the existing `leads` table. Token auto-generated for every lead (existing + new).
-- Add `weekly_email_log` table to track sends (lead_id, week_ending, status, sent_at, error) — prevents duplicates and lets you see delivery history.
+### Files to add
+1. **`src/lib/powerLaw.ts`** — constants + helpers: `computePowerLaw(date)`, `computeZScore(price, date)`, `powerLawScore(z)`, `powerLawStatus(z)`.
+2. **`src/components/dashboard/PowerLawChart.tsx`** — log-scale chart (Recharts) showing BTC price line + fair value + ±1σ/±2σ/±3σ bands with filled regions, matching `RainbowChart` styling. Uses `useFullBtcPriceHistory()`.
+3. **`src/components/dashboard/PowerLawCard.tsx`** *(optional, simpler: reuse `IndicatorCard`)* — small card showing current z-score, fair value, premium/discount %, and status pill.
 
-### 2. Edge functions (3 new)
-- **`send-welcome-email`** — called from the signup form right after the lead is inserted. Sends a single welcome email via SendGrid with name personalization and a link back to the dashboard.
-- **`send-weekly-report`** — pulls latest snapshot + previous week snapshot + latest weekly commentary, builds the HTML, then loops over all non-unsubscribed leads and sends via SendGrid (batched, with the unsubscribe link injected per recipient). Logs each send to `weekly_email_log`.
-- **`unsubscribe`** — public endpoint that accepts the token from the email link, marks the lead as unsubscribed, and returns a simple branded confirmation page.
+### Files to edit
+1. **`src/pages/Dashboard.tsx`** — add `<PowerLawChart />` section below `<RainbowChart />`, and inject Power Law into `<CoreIndicators />` via a new prop.
+2. **`src/components/dashboard/CoreIndicators.tsx`** — add a 6th `IndicatorCard` for "Power Law" (z-score value, score, status). Grid becomes `lg:grid-cols-3` or `lg:grid-cols-6` — will use `lg:grid-cols-3 xl:grid-cols-6` for readability.
+3. **`src/lib/scoring.ts`** — add `'Power Law'` tooltip entry to `INDICATOR_TOOLTIPS`.
 
-### 3. Cron job
-- Schedule `send-weekly-report` to run every **Monday at 14:00 UTC (9 AM ET)** using `pg_cron` + `pg_net`.
+### Scope decisions (frontend-only)
+- **No DB changes.** Power Law is fully derivable from existing `btc_daily_prices` + today's date, so we compute it in the browser. No pipeline / migration / edge function changes.
+- **Not added to cycle_total_score** in this pass — the gauge formula stays at max 20 (with MVRV) to avoid silently shifting historic scores. We can fold it in as a follow-up if you want a max-24 gauge.
+- Background "overbought/oversold" highlighting and the right-edge labels from the Pine script are translated into the chart's legend + the indicator card status.
 
-### 4. Frontend wiring
-- `SignupGate.tsx`: after a successful insert, fire-and-forget call to `send-welcome-email` (won't block the unlock if email is slow).
-- New `/unsubscribe` route that hits the unsubscribe edge function and shows a "You've been unsubscribed" confirmation matching the dark theme.
+### Visual style
+- Dark institutional theme, BTC orange for fair value line, semantic tokens only.
+- Bands use translucent fills (green near fair, amber ±2σ, red ±3σ top, blue ±3σ bottom) — same palette intent as the Pine script, themed via `hsl(var(--*))`.
+- Log Y-axis (consistent with Rainbow Chart).
 
-### 5. Email design
-Both emails match the dashboard's institutional dark aesthetic — charcoal background, white text, BTC orange accents — and render correctly in Gmail/Outlook (table-based layout, inline styles).
+### Out of scope
+- Adding Power Law to the cycle gauge total.
+- Storing daily Power Law values in `dashboard_snapshots`.
+- Weekly report / email mentions of Power Law.
 
-**Welcome email contents:**
-- Subject: "Welcome to the Bitcoin Cycle Dashboard"
-- Greeting with their name
-- Quick summary of what they get (cycle gauge, indicators, weekly report)
-- Big "Open Dashboard" button → `https://app.thecryptoinvestors.com`
-
-**Weekly report contents (per your choice — Summary + commentary):**
-- Subject: "BTC Weekly: [Phase] — Cycle Score [X]/20"
-- Current cycle phase + 0–20 score
-- BTC price + week-over-week % change
-- Your weekly commentary (headline + summary from `weekly_reports` table)
-- "View full dashboard" button
-- Footer with one-click **Unsubscribe** link
-
-## DST note
-Cron runs at a fixed UTC time (14:00). That's 9 AM ET during Eastern Daylight Time and 10 AM ET during Eastern Standard Time. If you want it to always be exactly 9 AM ET year-round, I can add logic to skip/shift in winter — let me know.
-
-## Out of scope (for now)
-- Bounce/complaint webhooks (SendGrid can post these back; can be added later)
-- Email open/click tracking analytics
-- Resend of welcome email if delivery fails (one-shot only)
-- Per-user weekly summary timing preferences
-
-## Technical notes (for reference)
-- SendGrid sent via REST API (`https://api.sendgrid.com/v3/mail/send`) directly from edge functions — no SDK dependency
-- Each weekly send batched in groups of ~500 recipients with `personalizations` to inject per-lead unsubscribe links
-- `weekly_email_log` has unique `(lead_id, week_ending)` to make the cron idempotent — re-running the same week won't double-send
-- Unsubscribe link format: `https://app.thecryptoinvestors.com/unsubscribe?token=<uuid>` — token is opaque, not guessable, no auth required
-- RLS: `unsubscribed_at` and `unsubscribe_token` remain admin-readable only (matches existing leads policy)
+Want me to also (a) include Power Law in the cycle total score, or (b) keep it purely informational like above?
