@@ -7,6 +7,7 @@ import {
   getPhaseColor,
   INDICATOR_TOOLTIPS,
 } from '@/lib/scoring';
+import { computeZScore, powerLawScore, powerLawStatus, powerLawStatusColor } from '@/lib/powerLaw';
 import type { DashboardSnapshot, HistoricalPoint } from '@/hooks/useDashboard';
 
 interface CoreIndicatorsProps {
@@ -39,6 +40,13 @@ export function CoreIndicators({
 }: CoreIndicatorsProps) {
   const hasMvrv = snapshot?.mvrv_score != null;
 
+  const btcPrice = snapshot?.btc_close_usd != null ? Number(snapshot.btc_close_usd) : null;
+  const plZ = btcPrice ? computeZScore(btcPrice, snapshot?.date) : null;
+  const prevBtcPrice = prevSnapshot?.btc_close_usd != null ? Number(prevSnapshot.btc_close_usd) : null;
+  const prevPlZ = prevBtcPrice ? computeZScore(prevBtcPrice, prevSnapshot?.date) : null;
+  const plScore = powerLawScore(plZ);
+  const prevPlScore = prevPlZ != null ? powerLawScore(prevPlZ) : null;
+
   return (
     <section>
       <h2 className="text-sm font-medium uppercase tracking-widest text-muted-foreground mb-4">
@@ -47,9 +55,9 @@ export function CoreIndicators({
           Click a card to expand chart
         </span>
       </h2>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3 sm:gap-4">
         {isLoading ? (
-          Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-44" />)
+          Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-44" />)
         ) : (
           <>
             <FearGreedGauge
@@ -119,6 +127,19 @@ export function CoreIndicators({
               tooltip={INDICATOR_TOOLTIPS['Macro / DXY']}
               previousValue={prevSnapshot?.macro_value ? Number(prevSnapshot.macro_value).toFixed(2) : null}
               previousScore={prevSnapshot?.macro_score}
+            />
+            <IndicatorCard
+              title="Power Law"
+              value={plZ != null ? `${plZ >= 0 ? '+' : ''}${plZ.toFixed(2)}σ` : '—'}
+              score={plScore}
+              maxScore={4}
+              status={powerLawStatus(plZ)}
+              statusColor={powerLawStatusColor(plZ)}
+              icon="📐"
+              disabled={plZ == null}
+              tooltip={INDICATOR_TOOLTIPS['Power Law']}
+              previousValue={prevPlZ != null ? `${prevPlZ >= 0 ? '+' : ''}${prevPlZ.toFixed(2)}σ` : null}
+              previousScore={prevPlScore}
             />
           </>
         )}
