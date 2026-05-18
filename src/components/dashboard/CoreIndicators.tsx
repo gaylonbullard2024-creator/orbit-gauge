@@ -7,6 +7,7 @@ import {
   getPhaseColor,
   INDICATOR_TOOLTIPS,
 } from '@/lib/scoring';
+import { computeZScore, powerLawScore, powerLawStatus, powerLawStatusColor } from '@/lib/powerLaw';
 import type { DashboardSnapshot, HistoricalPoint } from '@/hooks/useDashboard';
 
 interface CoreIndicatorsProps {
