@@ -229,29 +229,29 @@ export function PowerLawChart({ priceHistory }: PowerLawChartProps) {
 
         {/* Today's Position Highlight */}
         {pl && latest && (
-          <div className="mt-4 rounded-lg border border-border/40 bg-card/60 p-3 space-y-3">
+          <div className="mt-3 sm:mt-4 rounded-lg border border-border/40 bg-card/60 p-2.5 sm:p-3 space-y-2 sm:space-y-3">
             <div className="flex items-center gap-2">
               <div className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
-              <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Today vs Fair Value</span>
+              <span className="text-[10px] sm:text-xs font-medium text-muted-foreground uppercase tracking-wider">Today vs Fair Value</span>
             </div>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 text-xs">
               <div>
-                <p className="text-muted-foreground/70 mb-0.5">BTC Price</p>
-                <p className="font-mono text-sm font-semibold text-foreground">${latest.value.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
+                <p className="text-muted-foreground/70 text-[10px] sm:text-xs mb-0.5">BTC Price</p>
+                <p className="font-mono text-xs sm:text-sm font-semibold text-foreground">${latest.value.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
               </div>
               <div>
-                <p className="text-muted-foreground/70 mb-0.5">Fair Value</p>
-                <p className="font-mono text-sm font-semibold" style={{ color: COLORS.fair }}>${pl.fair.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
+                <p className="text-muted-foreground/70 text-[10px] sm:text-xs mb-0.5">Fair Value</p>
+                <p className="font-mono text-xs sm:text-sm font-semibold" style={{ color: COLORS.fair }}>${pl.fair.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
               </div>
               <div>
-                <p className="text-muted-foreground/70 mb-0.5">Premium / Discount</p>
-                <p className={`font-mono text-sm font-semibold ${premium != null && premium >= 0 ? 'text-[hsl(0,72%,55%)]' : 'text-[hsl(152,60%,45%)]'}`}>
+                <p className="text-muted-foreground/70 text-[10px] sm:text-xs mb-0.5">Premium / Discount</p>
+                <p className={`font-mono text-xs sm:text-sm font-semibold ${premium != null && premium >= 0 ? 'text-[hsl(0,72%,55%)]' : 'text-[hsl(152,60%,45%)]'}`}>
                   {premium != null ? `${premium >= 0 ? '+' : ''}${premium.toFixed(1)}%` : '—'}
                 </p>
               </div>
               <div>
-                <p className="text-muted-foreground/70 mb-0.5">Z-Score</p>
-                <p className="font-mono text-sm font-semibold" style={{ color: statusColor }}>
+                <p className="text-muted-foreground/70 text-[10px] sm:text-xs mb-0.5">Z-Score</p>
+                <p className="font-mono text-xs sm:text-sm font-semibold" style={{ color: statusColor }}>
                   {z != null ? `${z >= 0 ? '+' : ''}${z.toFixed(2)}σ` : '—'}
                 </p>
               </div>
@@ -259,7 +259,7 @@ export function PowerLawChart({ priceHistory }: PowerLawChartProps) {
             {/* Sigma band position bar */}
             {z != null && (
               <div className="space-y-1">
-                <div className="flex justify-between text-[10px] text-muted-foreground/60 font-mono">
+                <div className="hidden sm:flex justify-between text-[10px] text-muted-foreground/60 font-mono">
                   <span>−3σ</span>
                   <span>−2σ</span>
                   <span>−1σ</span>
@@ -268,7 +268,14 @@ export function PowerLawChart({ priceHistory }: PowerLawChartProps) {
                   <span>+2σ</span>
                   <span>+3σ</span>
                 </div>
-                <div className="relative h-3 rounded-full overflow-hidden flex">
+                <div className="flex sm:hidden justify-between text-[9px] text-muted-foreground/50 font-mono">
+                  <span>−3σ</span>
+                  <span>−1σ</span>
+                  <span>Fair</span>
+                  <span>+1σ</span>
+                  <span>+3σ</span>
+                </div>
+                <div className="relative h-2.5 sm:h-3 rounded-full overflow-hidden flex">
                   <div className="flex-1 h-full" style={{ backgroundColor: COLORS.dn3, opacity: 0.3 }} />
                   <div className="flex-1 h-full" style={{ backgroundColor: COLORS.dn2, opacity: 0.4 }} />
                   <div className="flex-1 h-full" style={{ backgroundColor: COLORS.dn1, opacity: 0.5 }} />
@@ -279,14 +286,14 @@ export function PowerLawChart({ priceHistory }: PowerLawChartProps) {
                 {/* Position marker */}
                 <div className="relative h-0">
                   <div
-                    className="absolute top-[-15px] -translate-x-1/2"
+                    className="absolute top-[-13px] sm:top-[-15px] -translate-x-1/2"
                     style={{
                       left: `${Math.max(0, Math.min(100, ((z + 3) / 6) * 100))}%`,
                     }}
                   >
                     <div className="flex flex-col items-center">
-                      <div className="w-0.5 h-3 bg-white/80" />
-                      <div className="w-2 h-2 rounded-full bg-white border-2 border-background shadow-sm" />
+                      <div className="w-0.5 h-2.5 sm:h-3 bg-white/80" />
+                      <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-white border-2 border-background shadow-sm" />
                     </div>
                   </div>
                 </div>
@@ -297,21 +304,23 @@ export function PowerLawChart({ priceHistory }: PowerLawChartProps) {
 
         {/* Legend */}
         {pl && (
-          <div className="mt-3 space-y-2">
-            {/* Sigma bands */}
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
-              <span className="text-muted-foreground/70 text-[10px] uppercase tracking-wider mr-1">Bands:</span>
-              <LegendDot color={COLORS.fair} label="Fair Value" dash />
-              <LegendDot color={COLORS.dn1} label="−1σ" />
-              <LegendDot color={COLORS.dn2} label="−2σ" />
-              <LegendDot color={COLORS.dn3} label="−3σ" />
-              <LegendDot color={COLORS.up1} label="+1σ" />
-              <LegendDot color={COLORS.up2} label="+2σ" />
-              <LegendDot color={COLORS.up3} label="+3σ" />
-              <LegendDot color={COLORS.price} label="BTC Price" />
+          <div className="mt-2 sm:mt-3 space-y-2">
+            {/* Sigma bands legend */}
+            <div className="flex flex-wrap items-center gap-x-2 sm:gap-x-3 gap-y-1 text-xs">
+              <span className="text-muted-foreground/70 text-[9px] sm:text-[10px] uppercase tracking-wider shrink-0">Bands:</span>
+              <div className="flex flex-wrap gap-x-2 sm:gap-x-3 gap-y-1">
+                <LegendDot color={COLORS.fair} label="Fair" dash />
+                <LegendDot color={COLORS.dn1} label="−1σ" />
+                <LegendDot color={COLORS.dn2} label="−2σ" />
+                <LegendDot color={COLORS.dn3} label="−3σ" />
+                <LegendDot color={COLORS.up1} label="+1σ" />
+                <LegendDot color={COLORS.up2} label="+2σ" />
+                <LegendDot color={COLORS.up3} label="+3σ" />
+                <LegendDot color={COLORS.price} label="Price" />
+              </div>
             </div>
             {/* Price readouts */}
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 text-xs">
+            <div className="grid grid-cols-2 gap-1.5 sm:gap-2 sm:grid-cols-4 text-xs">
               <Readout label="Fair Value" value={pl.fair} color={COLORS.fair} />
               <Readout label="+1σ" value={pl.bands.p1} color={COLORS.up1} />
               <Readout label="+2σ" value={pl.bands.p2} color={COLORS.up2} />
