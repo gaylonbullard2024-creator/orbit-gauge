@@ -120,8 +120,9 @@ export function InstitutionalIndicators() {
           Institutional Indicators
         </CardTitle>
         <p className="text-xs text-muted-foreground/70">
-          Ten on-chain signals scored alongside the Cycle Gauge. Greyed cards await a paid
-          Glassnode / CryptoQuant feed.
+          MVRV is the only institutional signal currently active. Puell, SOPR,
+          exchange flows, whale cohorts and Reserve Risk will appear once a paid
+          Glassnode / CryptoQuant feed is connected.
         </p>
       </CardHeader>
       <CardContent>
