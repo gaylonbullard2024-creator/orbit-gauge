@@ -157,7 +157,7 @@ Deno.serve(async (req) => {
     // 1. Load full BTC daily history (paged)
     const prices: { date: string; close: number }[] = [];
     let from = 0;
-    const pageSize = 5000;
+    const pageSize = 1000; // PostgREST server-side max-rows is 1000
     for (;;) {
       const { data, error } = await supabase
         .from("btc_daily_prices")
