@@ -48,6 +48,16 @@ export function PriceTrendChart({ priceHistory, maHistory }: PriceTrendChartProp
       ma200w: maMap.get(p.date) ?? null,
     }));
 
+  // ATH within the visible window — flagged so the client can verify $124k+ Oct 2025
+  const ath = useMemo(
+    () =>
+      merged.reduce(
+        (a, b) => (b.price > a.price ? b : a),
+        merged[0] ?? { date: '', price: 0, ma200w: null },
+      ),
+    [merged],
+  );
+
   return (
     <Card className="border-border/50 bg-card/80">
       <CardHeader className="pb-2">
