@@ -140,6 +140,90 @@ export type Database = {
         }
         Relationships: []
       }
+      data_integrity_log: {
+        Row: {
+          affected_date: string | null
+          category: string
+          checked_at: string
+          details: Json | null
+          expected: number | null
+          field: string | null
+          id: string
+          message: string
+          observed: number | null
+          provider: string
+          rejected: boolean
+          severity: string
+        }
+        Insert: {
+          affected_date?: string | null
+          category: string
+          checked_at?: string
+          details?: Json | null
+          expected?: number | null
+          field?: string | null
+          id?: string
+          message: string
+          observed?: number | null
+          provider: string
+          rejected?: boolean
+          severity?: string
+        }
+        Update: {
+          affected_date?: string | null
+          category?: string
+          checked_at?: string
+          details?: Json | null
+          expected?: number | null
+          field?: string | null
+          id?: string
+          message?: string
+          observed?: number | null
+          provider?: string
+          rejected?: boolean
+          severity?: string
+        }
+        Relationships: []
+      }
+      data_provider_status: {
+        Row: {
+          last_checked_at: string
+          last_error: string | null
+          last_error_at: string | null
+          last_success_at: string | null
+          latency_ms: number | null
+          notes: string | null
+          provider: string
+          status: string
+          success_rate_24h: number | null
+          updated_at: string
+        }
+        Insert: {
+          last_checked_at?: string
+          last_error?: string | null
+          last_error_at?: string | null
+          last_success_at?: string | null
+          latency_ms?: number | null
+          notes?: string | null
+          provider: string
+          status?: string
+          success_rate_24h?: number | null
+          updated_at?: string
+        }
+        Update: {
+          last_checked_at?: string
+          last_error?: string | null
+          last_error_at?: string | null
+          last_success_at?: string | null
+          latency_ms?: number | null
+          notes?: string | null
+          provider?: string
+          status?: string
+          success_rate_24h?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       fear_greed_daily: {
         Row: {
           classification: string | null

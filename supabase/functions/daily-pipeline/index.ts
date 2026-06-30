@@ -338,6 +338,21 @@ Deno.serve(async (req) => {
       strategy_signal: strategies[phase],
     } as any, { onConflict: "date" });
 
+    // Fire-and-forget: run the Data Integrity Validator against the freshly written rows.
+    // Errors here are logged but never block the pipeline response.
+    try {
+      const validatorUrl = `${Deno.env.get("SUPABASE_URL")}/functions/v1/validate-data`;
+      fetch(validatorUrl, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
+          "Content-Type": "application/json",
+        },
+        body: "{}",
+      }).catch((e) => console.warn("validator kick-off failed:", (e as Error).message));
+    } catch (e) {
+      console.warn("validator dispatch error:", (e as Error).message);
+    }
 
     return new Response(
       JSON.stringify({
@@ -349,6 +364,7 @@ Deno.serve(async (req) => {
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
+
   } catch (error) {
     console.error("Pipeline error:", error);
     return new Response(
