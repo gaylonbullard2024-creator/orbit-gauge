@@ -47,9 +47,9 @@ Deno.serve(async (req) => {
     if (btcErr) console.error("BTC insert error:", btcErr.message);
     console.log(`Stored ${uniqueBtc.length} BTC price rows`);
 
-    // 2. Fetch Fear & Greed history (Alternative.me supports ?limit=365)
-    console.log("Fetching Fear & Greed history...");
-    const fgRes = await fetch("https://api.alternative.me/fng/?limit=365");
+    // 2. Fetch FULL Fear & Greed history from alternative.me (limit=0 = all)
+    console.log("Fetching Fear & Greed history (full)...");
+    const fgRes = await fetch("https://api.alternative.me/fng/?limit=0&format=json");
     if (!fgRes.ok) throw new Error(`Fear&Greed error: ${fgRes.status}`);
     const fgData = await fgRes.json();
     const fgRows = fgData.data.map((d: any) => ({
