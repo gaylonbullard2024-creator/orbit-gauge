@@ -36,6 +36,29 @@ function getColor(v: number): string {
   return zone?.color ?? 'hsl(45, 90%, 50%)';
 }
 
+function getRecommendation(v: number): string {
+  if (v < 20) return 'Aggressive accumulation';
+  if (v < 40) return 'Begin accumulation';
+  if (v < 60) return 'Hold / monitor';
+  if (v < 75) return 'Begin partial distribution';
+  return 'Distribute / take profits';
+}
+
+function getRecommendationTone(v: number): string {
+  if (v < 40) return 'text-emerald-400 border-emerald-500/30 bg-emerald-500/10';
+  if (v < 60) return 'text-amber-400 border-amber-500/30 bg-amber-500/10';
+  return 'text-rose-400 border-rose-500/30 bg-rose-500/10';
+}
+
+function historicalPositionLabel(percentile: number): string {
+  if (percentile >= 90) return 'Top 10%';
+  if (percentile >= 75) return 'Upper 25%';
+  if (percentile >= 50) return 'Upper Half';
+  if (percentile >= 25) return 'Lower Half';
+  if (percentile >= 10) return 'Lower 25%';
+  return 'Bottom 10%';
+}
+
 /** Build a thick arc path (annular sector) */
 function arcPath(cx: number, cy: number, rOuter: number, rInner: number, startDeg: number, endDeg: number): string {
   const toRad = (d: number) => (d * Math.PI) / 180;
@@ -78,6 +101,30 @@ export function FearGreedGauge({
     const pct = Math.min(Math.max(value / 100, 0), 1);
     return -180 + pct * 180; // -180 (left) to 0 (right)
   }, [value]);
+
+  const { percentile, confidence } = useMemo(() => {
+    const vals = (history ?? [])
+      .map((h) => h.value)
+      .filter((v): v is number => typeof v === 'number' && Number.isFinite(v));
+    if (vals.length < 10) {
+      return { percentile: null as number | null, confidence: vals.length === 0 ? 0 : 50 };
+    }
+    const sorted = [...vals].sort((a, b) => a - b);
+    let lo = 0, hi = sorted.length;
+    while (lo < hi) {
+      const mid = (lo + hi) >> 1;
+      if (sorted[mid] < value) lo = mid + 1; else hi = mid;
+    }
+    const pct = Math.round((lo / sorted.length) * 100);
+    // Confidence: more historical depth + stronger distance from neutral → higher
+    const depthScore = Math.min(1, vals.length / 365); // 0..1 over a year
+    const extremity = Math.min(1, Math.abs(value - 50) / 50); // 0 at neutral, 1 at extreme
+    const conf = Math.round((0.55 * depthScore + 0.45 * extremity) * 100);
+    return { percentile: pct, confidence: conf };
+  }, [history, value]);
+
+  const recommendation = getRecommendation(value);
+  const recTone = getRecommendationTone(value);
 
   const cx = 150;
   const cy = 145;
@@ -250,6 +297,42 @@ export function FearGreedGauge({
                 </div>
               ))}
             </div>
+
+            {/* Recommendation panel */}
+            <div className="grid grid-cols-2 gap-2 rounded-lg border border-border/50 bg-muted/20 p-2.5">
+              <div>
+                <div className="text-[9px] uppercase tracking-wider text-muted-foreground">Zone</div>
+                <div className="text-xs font-semibold" style={{ color }}>{classification}</div>
+              </div>
+              <div>
+                <div className="text-[9px] uppercase tracking-wider text-muted-foreground">Historical Position</div>
+                <div className="text-xs font-semibold text-foreground">
+                  {percentile != null ? historicalPositionLabel(percentile) : '—'}
+                  {percentile != null && (
+                    <span className="ml-1 font-mono text-[10px] text-muted-foreground">({percentile}%)</span>
+                  )}
+                </div>
+              </div>
+              <div className="col-span-2">
+                <div className="text-[9px] uppercase tracking-wider text-muted-foreground">Recommendation</div>
+                <span className={`mt-0.5 inline-block rounded border px-1.5 py-0.5 text-[11px] font-semibold ${recTone}`}>
+                  {recommendation}
+                </span>
+              </div>
+              <div className="col-span-2">
+                <div className="flex items-center justify-between text-[9px] uppercase tracking-wider text-muted-foreground">
+                  <span>Confidence</span>
+                  <span className="font-mono text-foreground/90">{confidence}%</span>
+                </div>
+                <div className="mt-1 h-1 w-full overflow-hidden rounded-full bg-muted/50">
+                  <div
+                    className="h-full rounded-full bg-primary/70"
+                    style={{ width: `${confidence}%` }}
+                  />
+                </div>
+              </div>
+            </div>
+
 
             {/* Mini sparkline */}
             {history && history.length > 1 && (

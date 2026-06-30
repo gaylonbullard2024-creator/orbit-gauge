@@ -39,66 +39,6 @@ const INDICATORS: IndicatorDef[] = [
     fmt: (v) => v.toFixed(2),
     interpret: (v) => (v < 1 ? 'Bullish' : v < 2.4 ? 'Neutral' : 'Bearish'),
   },
-  {
-    key: 'puell_value', name: 'Puell Multiple',
-    description: 'Miner revenue vs 365d MA',
-    fmt: (v) => v.toFixed(2),
-    interpret: (v) => (v < 0.5 ? 'Bullish' : v < 4 ? 'Neutral' : 'Bearish'),
-  },
-  {
-    key: 'lth_sopr_value', name: 'LTH-SOPR',
-    description: 'Long-term holder profit ratio',
-    fmt: (v) => v.toFixed(3),
-    interpret: (v) => (v < 1 ? 'Bullish' : v < 1.05 ? 'Neutral' : 'Bearish'),
-    awaiting: true, paidNote: 'Requires Glassnode',
-  },
-  {
-    key: 'exchange_inflow', name: 'Exchange Inflows',
-    description: 'BTC sent to exchanges (sell pressure)',
-    fmt: (v) => `${(v / 1000).toFixed(1)}k BTC`,
-    interpret: (v) => (v > 50000 ? 'Bearish' : v > 20000 ? 'Neutral' : 'Bullish'),
-    awaiting: true, paidNote: 'Requires CryptoQuant',
-  },
-  {
-    key: 'exchange_outflow', name: 'Exchange Outflows',
-    description: 'BTC withdrawn from exchanges (accumulation)',
-    fmt: (v) => `${(v / 1000).toFixed(1)}k BTC`,
-    interpret: (v) => (v > 50000 ? 'Bullish' : v > 20000 ? 'Neutral' : 'Bearish'),
-    awaiting: true, paidNote: 'Requires CryptoQuant',
-  },
-  {
-    key: 'whale_accumulation', name: 'Whale Accumulation',
-    description: 'Net BTC added by 1k+ BTC cohort',
-    fmt: (v) => `${v.toFixed(2)}`,
-    interpret: (v) => (v > 0.6 ? 'Bullish' : v > 0.4 ? 'Neutral' : 'Bearish'),
-    awaiting: true, paidNote: 'Requires Glassnode',
-  },
-  {
-    key: 'whale_distribution', name: 'Whale Distribution',
-    description: 'Net BTC removed by 1k+ BTC cohort',
-    fmt: (v) => `${v.toFixed(2)}`,
-    interpret: (v) => (v > 0.6 ? 'Bearish' : v > 0.4 ? 'Neutral' : 'Bullish'),
-    awaiting: true, paidNote: 'Requires Glassnode',
-  },
-  {
-    key: 'realized_price', name: 'Realized Price',
-    description: 'On-chain cost basis of all BTC supply',
-    fmt: (v) => `$${v.toLocaleString(undefined, { maximumFractionDigits: 0 })}`,
-    interpret: () => 'Neutral',
-  },
-  {
-    key: 'nupl', name: 'NUPL',
-    description: 'Net Unrealized Profit/Loss',
-    fmt: (v) => v.toFixed(3),
-    interpret: (v) => (v < 0.25 ? 'Bullish' : v < 0.75 ? 'Neutral' : 'Bearish'),
-  },
-  {
-    key: 'reserve_risk', name: 'Reserve Risk',
-    description: 'Long-term holder conviction vs price',
-    fmt: (v) => v.toFixed(4),
-    interpret: (v) => (v < 0.005 ? 'Bullish' : v < 0.02 ? 'Neutral' : 'Bearish'),
-    awaiting: true, paidNote: 'Requires Glassnode',
-  },
 ];
 
 
@@ -180,8 +120,9 @@ export function InstitutionalIndicators() {
           Institutional Indicators
         </CardTitle>
         <p className="text-xs text-muted-foreground/70">
-          Ten on-chain signals scored alongside the Cycle Gauge. Greyed cards await a paid
-          Glassnode / CryptoQuant feed.
+          MVRV is the only institutional signal currently active. Puell, SOPR,
+          exchange flows, whale cohorts and Reserve Risk will appear once a paid
+          Glassnode / CryptoQuant feed is connected.
         </p>
       </CardHeader>
       <CardContent>
