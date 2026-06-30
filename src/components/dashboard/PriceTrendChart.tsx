@@ -167,8 +167,32 @@ export function PriceTrendChart({ priceHistory, maHistory }: PriceTrendChartProp
               activeDot={{ r: 3, fill: 'hsl(45, 90%, 55%)' }}
               connectNulls
             />
+            {ath.date && (
+              <ReferenceDot
+                x={ath.date}
+                y={ath.price}
+                r={5}
+                fill="hsl(45, 90%, 55%)"
+                stroke="hsl(220, 14%, 11%)"
+                strokeWidth={2}
+                label={{
+                  value: `ATH $${Math.round(ath.price).toLocaleString()}`,
+                  position: 'top',
+                  fill: 'hsl(45, 90%, 65%)',
+                  fontSize: 10,
+                  fontWeight: 600,
+                }}
+                ifOverflow="extendDomain"
+              />
+            )}
           </ComposedChart>
         </ResponsiveContainer>
+        {ath.date && (
+          <p className="mt-2 text-[10px] text-muted-foreground">
+            ATH in window: <span className="text-foreground font-medium">${Math.round(ath.price).toLocaleString()}</span> on{' '}
+            {new Date(ath.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} (daily close, Coin Metrics). Intraday highs from other sources may differ by ~1–2%.
+          </p>
+        )}
       </CardContent>
     </Card>
   );
