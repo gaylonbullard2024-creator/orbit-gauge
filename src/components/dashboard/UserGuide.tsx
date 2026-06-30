@@ -38,11 +38,11 @@ const SECTIONS: GuideSection[] = [
     what: 'Market sentiment indicator (0–100) from Alternative.me that blends volatility, momentum, social media, and dominance.',
     how: 'Contrarian signal: extreme fear often marks bottoms, extreme greed often marks tops.',
     read: [
-      { label: '0–25 Extreme Fear', meaning: 'Often a buying opportunity.' },
-      { label: '26–45 Fear', meaning: 'Cautious market.' },
-      { label: '46–55 Neutral', meaning: 'Balanced sentiment.' },
-      { label: '56–75 Greed', meaning: 'Optimism building.' },
-      { label: '76–100 Extreme Greed', meaning: 'Overheated — consider trimming.' },
+      { label: '0–20 Extreme Fear', meaning: 'Often a buying opportunity.' },
+      { label: '20–40 Fear', meaning: 'Cautious market.' },
+      { label: '40–60 Neutral', meaning: 'Balanced sentiment.' },
+      { label: '60–75 Greed', meaning: 'Optimism building.' },
+      { label: '75–100 Extreme Greed', meaning: 'Overheated — consider trimming.' },
     ],
   },
   {
