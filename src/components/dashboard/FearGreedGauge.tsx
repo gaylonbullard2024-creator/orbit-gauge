@@ -36,6 +36,29 @@ function getColor(v: number): string {
   return zone?.color ?? 'hsl(45, 90%, 50%)';
 }
 
+function getRecommendation(v: number): string {
+  if (v < 20) return 'Aggressive accumulation';
+  if (v < 40) return 'Begin accumulation';
+  if (v < 60) return 'Hold / monitor';
+  if (v < 75) return 'Begin partial distribution';
+  return 'Distribute / take profits';
+}
+
+function getRecommendationTone(v: number): string {
+  if (v < 40) return 'text-emerald-400 border-emerald-500/30 bg-emerald-500/10';
+  if (v < 60) return 'text-amber-400 border-amber-500/30 bg-amber-500/10';
+  return 'text-rose-400 border-rose-500/30 bg-rose-500/10';
+}
+
+function historicalPositionLabel(percentile: number): string {
+  if (percentile >= 90) return 'Top 10%';
+  if (percentile >= 75) return 'Upper 25%';
+  if (percentile >= 50) return 'Upper Half';
+  if (percentile >= 25) return 'Lower Half';
+  if (percentile >= 10) return 'Lower 25%';
+  return 'Bottom 10%';
+}
+
 /** Build a thick arc path (annular sector) */
 function arcPath(cx: number, cy: number, rOuter: number, rInner: number, startDeg: number, endDeg: number): string {
   const toRad = (d: number) => (d * Math.PI) / 180;
