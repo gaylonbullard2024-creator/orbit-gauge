@@ -169,65 +169,64 @@ Deno.serve(async (req) => {
     else if (deviation < 0.5) rainbowBand = "Overheated";
     else rainbowBand = "Bubble Risk";
 
-    // 6. Score indicators
+    // 6. Market Phase Engine v2 — weighted 4-signal
+    const WEIGHTS = { mvrv: 0.30, trend: 0.25, ma200w: 0.25, fearGreed: 0.20 };
+
     function scoreFG(v: number) {
-      if (v <= 25) return 0;
+      if (v <= 20) return 0;
       if (v <= 40) return 1;
-      if (v <= 60) return 2;
-      if (v <= 75) return 3;
+      if (v <= 55) return 2;
+      if (v <= 70) return 3;
       return 4;
     }
-    function scoreTrend(price: number, ma: number) {
+    function scoreMA(price: number, ma: number) {
       if (price <= ma) return 0;
-      const pct = price / ma - 1;
-      if (pct <= 0.25) return 1;
-      if (pct <= 0.75) return 2;
-      if (pct <= 1.5) return 3;
+      const mult = price / ma;
+      if (mult <= 1.25) return 1;
+      if (mult <= 1.75) return 2;
+      if (mult <= 2.25) return 3;
+      return 4;
+    }
+    function scoreTrendStrength(price: number, ma: number, ret90: number | null) {
+      const mult = price / ma;
+      let base: number;
+      if (mult < 0.85) base = 0;
+      else if (mult < 1.0) base = 1;
+      else if (mult < 1.5) base = 2;
+      else if (mult < 2.0) base = 3;
+      else base = 4;
+      if (ret90 == null) return base;
+      let slope: number;
+      if (ret90 <= -0.25) slope = -2;
+      else if (ret90 <= -0.10) slope = -1;
+      else if (ret90 <= 0.10) slope = 0;
+      else if (ret90 <= 0.30) slope = 1;
+      else slope = 2;
+      return Math.max(0, Math.min(4, base + slope));
+    }
+    function scoreMVRV(v: number | null) {
+      if (v == null) return null;
+      if (v < 1.0) return 0;
+      if (v < 1.5) return 1;
+      if (v < 2.0) return 2;
+      if (v < 2.5) return 3;
       return 4;
     }
     function scoreRB(band: string) {
-      const m: Record<string, number> = {
-        "Fire Sale": 0, "Accumulate": 1, "Growth": 2, "Overheated": 3, "Bubble Risk": 4,
-      };
+      const m: Record<string, number> = { "Fire Sale": 0, "Accumulate": 1, "Growth": 2, "Overheated": 3, "Bubble Risk": 4 };
       return m[band] ?? 2;
     }
     function scoreMacro(v: number | null) {
       if (v == null) return 2;
-      if (v < 95) return 0;
-      if (v < 100) return 1;
-      if (v < 105) return 2;
-      if (v < 110) return 3;
-      return 4;
+      if (v < 95) return 0; if (v < 100) return 1; if (v < 105) return 2; if (v < 110) return 3; return 4;
     }
-    function scoreMVRV(v: number | null) {
-      if (v == null) return null;
-      if (v < 1) return 0;
-      if (v < 2) return 1;
-      if (v < 3) return 2;
-      if (v < 3.7) return 3;
-      return 4;
-    }
-    function scorePuell(v: number | null) {
-      if (v == null) return null;
-      if (v < 0.5) return 0;
-      if (v < 1.0) return 1;
-      if (v < 2.0) return 2;
-      if (v < 4.0) return 3;
-      return 4;
-    }
-    function scoreSOPR(v: number | null) {
-      if (v == null) return null;
-      if (v < 0.95) return 0;
-      if (v < 1.0) return 1;
-      if (v < 1.02) return 2;
-      if (v < 1.05) return 3;
-      return 4;
-    }
+    function scorePuell(v: number | null) { if (v == null) return null; if (v < 0.5) return 0; if (v < 1) return 1; if (v < 2) return 2; if (v < 4) return 3; return 4; }
+    function scoreSOPR(v: number | null)  { if (v == null) return null; if (v < 0.95) return 0; if (v < 1) return 1; if (v < 1.02) return 2; if (v < 1.05) return 3; return 4; }
 
-    // 6b. Real on-chain metrics from Coin Metrics community API
+    // 6b. Real MVRV from Coin Metrics community API
     let mvrvValue: number | null = null;
-    let puellValue: number | null = null;
-    let soprValue: number | null = null;
+    const puellValue: number | null = null;
+    const soprValue: number | null = null;
     try {
       const cmRes = await fetch(
         "https://community-api.coinmetrics.io/v4/timeseries/asset-metrics?assets=btc&metrics=CapMVRVCur&frequency=1d&page_size=10&end_time=" +
@@ -237,20 +236,14 @@ Deno.serve(async (req) => {
         const cmJ: any = await cmRes.json();
         const rows = (cmJ.data ?? []).slice().reverse();
         for (const r of rows) {
-          if (mvrvValue == null && r.CapMVRVCur != null) mvrvValue = Number(r.CapMVRVCur);
-          if (puellValue == null && r.PuellMultiple != null) puellValue = Number(r.PuellMultiple);
-          if (soprValue == null && r.SOPR != null) soprValue = Number(r.SOPR);
-          if (mvrvValue != null && puellValue != null && soprValue != null) break;
+          if (mvrvValue == null && r.CapMVRVCur != null) { mvrvValue = Number(r.CapMVRVCur); break; }
         }
-        console.log("Coin Metrics latest:", { mvrvValue, puellValue, soprValue });
-        // persist onchain_metrics_daily (long format)
-        const onchainRows = [
-          { date: today, metric_name: "mvrv", value: mvrvValue, source: "coinmetrics" },
-          { date: today, metric_name: "puell", value: puellValue, source: "coinmetrics" },
-          { date: today, metric_name: "sopr", value: soprValue, source: "coinmetrics" },
-        ].filter((r) => r.value != null);
-        if (onchainRows.length) {
-          await supabase.from("onchain_metrics_daily").upsert(onchainRows as any, { onConflict: "date,metric_name" });
+        console.log("Coin Metrics latest MVRV:", mvrvValue);
+        if (mvrvValue != null) {
+          await supabase.from("onchain_metrics_daily").upsert(
+            [{ date: today, metric_name: "mvrv", value: mvrvValue, source: "coinmetrics" }] as any,
+            { onConflict: "date,metric_name" }
+          );
         }
       } else {
         console.warn("Coin Metrics fetch failed:", cmRes.status, await cmRes.text());
@@ -259,27 +252,49 @@ Deno.serve(async (req) => {
       console.warn("Coin Metrics error:", (e as Error).message);
     }
 
+    // 90-day return for trend slope (pull yesterday-90)
+    let ret90d: number | null = null;
+    try {
+      const d90 = new Date(today + "T00:00:00Z");
+      d90.setUTCDate(d90.getUTCDate() - 90);
+      const target = d90.toISOString().slice(0, 10);
+      const { data: oldRows } = await supabase
+        .from("btc_daily_prices")
+        .select("date, close_usd")
+        .lte("date", target)
+        .order("date", { ascending: false })
+        .limit(1);
+      const past = oldRows?.[0]?.close_usd;
+      if (past != null && past > 0) ret90d = latestPrice / Number(past) - 1;
+    } catch (e) {
+      console.warn("90d return lookup failed:", (e as Error).message);
+    }
+
     const fgScore = scoreFG(fgValue);
-    const maScore = scoreTrend(latestPrice, ma200w);
+    const maScore = scoreMA(latestPrice, ma200w);
+    const trendScore = scoreTrendStrength(latestPrice, ma200w, ret90d);
     const rbScore = scoreRB(rainbowBand);
     const macroScore = scoreMacro(dxyValue);
     const mvrvScore = scoreMVRV(mvrvValue);
     const puellScore = scorePuell(puellValue);
     const soprScore = scoreSOPR(soprValue);
 
-    const hasMvrv = mvrvScore != null;
-    const totalScore =
-      fgScore + maScore + rbScore + macroScore + (hasMvrv ? (mvrvScore as number) : 0);
+    // Weighted combine — re-normalize over available pillars
+    let w = 0, sum = 0;
+    if (mvrvScore  != null) { sum += mvrvScore  * WEIGHTS.mvrv;      w += WEIGHTS.mvrv; }
+    sum += trendScore * WEIGHTS.trend;     w += WEIGHTS.trend;
+    sum += maScore    * WEIGHTS.ma200w;    w += WEIGHTS.ma200w;
+    if (fgScore != null)   { sum += fgScore    * WEIGHTS.fearGreed; w += WEIGHTS.fearGreed; }
+    const weightedScore = w > 0 ? Math.round((sum / w) * 5) : 0;
+    const totalScore = weightedScore;
 
-    // Map to phase
-    const maxScore = hasMvrv ? 20 : 16;
-    const norm = (totalScore / maxScore) * 20;
     let phase: string;
-    if (norm <= 5) phase = "Deep Value";
-    else if (norm <= 9) phase = "Accumulation";
-    else if (norm <= 13) phase = "Bull Trend";
-    else if (norm <= 17) phase = "Overheated";
+    if (weightedScore < 5) phase = "Deep Value";
+    else if (weightedScore < 9) phase = "Accumulation";
+    else if (weightedScore < 13) phase = "Bull Trend";
+    else if (weightedScore < 16) phase = "Overheated";
     else phase = "Cycle Top Risk";
+
 
     const strategies: Record<string, string> = {
       "Deep Value": "Strong accumulation zone. Historically the best time to build positions.",
