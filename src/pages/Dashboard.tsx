@@ -42,6 +42,10 @@ const PhaseHistory = lazy(() =>
 const CycleValidation = lazy(() =>
   import('@/components/dashboard/CycleValidation').then((m) => ({ default: m.CycleValidation }))
 );
+const InstitutionalIndicators = lazy(() =>
+  import('@/components/dashboard/InstitutionalIndicators').then((m) => ({ default: m.InstitutionalIndicators }))
+);
+
 
 
 const ChartFallback = () => (
@@ -139,6 +143,14 @@ export default function Dashboard() {
         {!isLoading && snapshot && (
           <ScoreBreakdown snapshot={snapshot} totalScore={totalScore} maxScore={maxScore} />
         )}
+
+        {/* Institutional Indicators — 10-signal panel */}
+        <section>
+          <Suspense fallback={<ChartFallback />}>
+            <InstitutionalIndicators />
+          </Suspense>
+        </section>
+
 
         {/* Weekly Summary */}
         {!isLoading && snapshot && (

@@ -169,14 +169,14 @@ Deno.serve(async (req) => {
     else if (deviation < 0.5) rainbowBand = "Overheated";
     else rainbowBand = "Bubble Risk";
 
-    // 6. Market Phase Engine v2 — weighted 4-signal
-    const WEIGHTS = { mvrv: 0.30, trend: 0.25, ma200w: 0.25, fearGreed: 0.20 };
+    // 6. Market Phase Engine v3 — institutional 6-pillar
+    const WEIGHTS = { mvrv: 0.20, nupl: 0.20, puell: 0.15, reserveRisk: 0.10, ma200w: 0.20, fearGreed: 0.15 };
 
     function scoreFG(v: number) {
-      if (v <= 20) return 0;
-      if (v <= 40) return 1;
-      if (v <= 55) return 2;
-      if (v <= 70) return 3;
+      if (v < 20) return 0;
+      if (v < 40) return 1;
+      if (v < 60) return 2;
+      if (v < 75) return 3;
       return 4;
     }
     function scoreMA(price: number, ma: number) {
@@ -187,23 +187,6 @@ Deno.serve(async (req) => {
       if (mult <= 2.25) return 3;
       return 4;
     }
-    function scoreTrendStrength(price: number, ma: number, ret90: number | null) {
-      const mult = price / ma;
-      let base: number;
-      if (mult < 0.85) base = 0;
-      else if (mult < 1.0) base = 1;
-      else if (mult < 1.5) base = 2;
-      else if (mult < 2.0) base = 3;
-      else base = 4;
-      if (ret90 == null) return base;
-      let slope: number;
-      if (ret90 <= -0.25) slope = -2;
-      else if (ret90 <= -0.10) slope = -1;
-      else if (ret90 <= 0.10) slope = 0;
-      else if (ret90 <= 0.30) slope = 1;
-      else slope = 2;
-      return Math.max(0, Math.min(4, base + slope));
-    }
     function scoreMVRV(v: number | null) {
       if (v == null) return null;
       if (v < 1.0) return 0;
@@ -211,6 +194,26 @@ Deno.serve(async (req) => {
       if (v < 2.0) return 2;
       if (v < 2.5) return 3;
       return 4;
+    }
+    function scoreNUPL(v: number | null) {
+      if (v == null) return null;
+      if (v < 0) return 0;
+      if (v < 0.25) return 1;
+      if (v < 0.50) return 2;
+      if (v < 0.75) return 3;
+      return 4;
+    }
+    function scorePuell(v: number | null) {
+      if (v == null) return null;
+      if (v < 0.5) return 0; if (v < 1) return 1; if (v < 2) return 2; if (v < 4) return 3; return 4;
+    }
+    function scoreReserveRisk(v: number | null) {
+      if (v == null) return null;
+      if (v < 0.002) return 0; if (v < 0.005) return 1; if (v < 0.010) return 2; if (v < 0.020) return 3; return 4;
+    }
+    function scoreSOPR(v: number | null) {
+      if (v == null) return null;
+      if (v < 0.95) return 0; if (v < 1) return 1; if (v < 1.02) return 2; if (v < 1.05) return 3; return 4;
     }
     function scoreRB(band: string) {
       const m: Record<string, number> = { "Fire Sale": 0, "Accumulate": 1, "Growth": 2, "Overheated": 3, "Bubble Risk": 4 };
@@ -220,25 +223,36 @@ Deno.serve(async (req) => {
       if (v == null) return 2;
       if (v < 95) return 0; if (v < 100) return 1; if (v < 105) return 2; if (v < 110) return 3; return 4;
     }
-    function scorePuell(v: number | null) { if (v == null) return null; if (v < 0.5) return 0; if (v < 1) return 1; if (v < 2) return 2; if (v < 4) return 3; return 4; }
-    function scoreSOPR(v: number | null)  { if (v == null) return null; if (v < 0.95) return 0; if (v < 1) return 1; if (v < 1.02) return 2; if (v < 1.05) return 3; return 4; }
 
-    // 6b. Real MVRV from Coin Metrics community API
+    // 6b. Coin Metrics free-tier — MVRV, Supply, Issuance USD.
+    // CapRealUSD / CapMrktCurUSD are paid; we derive Realized Price + NUPL from MVRV.
     let mvrvValue: number | null = null;
-    const puellValue: number | null = null;
-    const soprValue: number | null = null;
+    let supply: number | null = null;
+    let issuanceUsd: number | null = null;
+    let issuanceMa365: number | null = null;
     try {
+      const startBack = new Date(today + "T00:00:00Z");
+      startBack.setUTCDate(startBack.getUTCDate() - 400);
+      const startStr = startBack.toISOString().slice(0, 10);
       const cmRes = await fetch(
-        "https://community-api.coinmetrics.io/v4/timeseries/asset-metrics?assets=btc&metrics=CapMVRVCur&frequency=1d&page_size=10&end_time=" +
-          encodeURIComponent(today + "T23:59:59Z")
+        "https://community-api.coinmetrics.io/v4/timeseries/asset-metrics" +
+        "?assets=btc&metrics=CapMVRVCur,SplyCur,IssTotUSD" +
+        `&frequency=1d&page_size=10000&start_time=${startStr}&end_time=${encodeURIComponent(today + "T23:59:59Z")}`
       );
       if (cmRes.ok) {
         const cmJ: any = await cmRes.json();
-        const rows = (cmJ.data ?? []).slice().reverse();
-        for (const r of rows) {
-          if (mvrvValue == null && r.CapMVRVCur != null) { mvrvValue = Number(r.CapMVRVCur); break; }
+        const rows = (cmJ.data ?? []) as any[];
+        for (let i = rows.length - 1; i >= 0; i--) {
+          const r = rows[i];
+          if (mvrvValue == null && r.CapMVRVCur != null) mvrvValue = Number(r.CapMVRVCur);
+          if (supply == null && r.SplyCur != null) supply = Number(r.SplyCur);
+          if (issuanceUsd == null && r.IssTotUSD != null) issuanceUsd = Number(r.IssTotUSD);
+          if (mvrvValue && supply && issuanceUsd) break;
         }
-        console.log("Coin Metrics latest MVRV:", mvrvValue);
+        const issSeries = rows.map((r) => r.IssTotUSD).filter((v) => v != null).map(Number);
+        const tail = issSeries.slice(-365);
+        if (tail.length >= 30) issuanceMa365 = tail.reduce((s, v) => s + v, 0) / tail.length;
+        console.log("Coin Metrics: MVRV", mvrvValue, "Iss", issuanceUsd, "IssMA", issuanceMa365);
         if (mvrvValue != null) {
           await supabase.from("onchain_metrics_daily").upsert(
             [{ date: today, metric_name: "mvrv", value: mvrvValue, source: "coinmetrics" }] as any,
@@ -252,39 +266,33 @@ Deno.serve(async (req) => {
       console.warn("Coin Metrics error:", (e as Error).message);
     }
 
-    // 90-day return for trend slope (pull yesterday-90)
-    let ret90d: number | null = null;
-    try {
-      const d90 = new Date(today + "T00:00:00Z");
-      d90.setUTCDate(d90.getUTCDate() - 90);
-      const target = d90.toISOString().slice(0, 10);
-      const { data: oldRows } = await supabase
-        .from("btc_daily_prices")
-        .select("date, close_usd")
-        .lte("date", target)
-        .order("date", { ascending: false })
-        .limit(1);
-      const past = oldRows?.[0]?.close_usd;
-      if (past != null && past > 0) ret90d = latestPrice / Number(past) - 1;
-    } catch (e) {
-      console.warn("90d return lookup failed:", (e as Error).message);
-    }
+    const realizedPrice = mvrvValue != null && mvrvValue > 0 ? latestPrice / mvrvValue : null;
+    const nuplValue = mvrvValue != null && mvrvValue > 0 ? 1 - 1 / mvrvValue : null;
+    const puellValue = issuanceUsd != null && issuanceMa365 != null && issuanceMa365 > 0
+      ? issuanceUsd / issuanceMa365 : null;
+    const reserveRiskValue: number | null = null; // requires coin-days (paid feed)
+    const soprValue: number | null = null;
+
 
     const fgScore = scoreFG(fgValue);
     const maScore = scoreMA(latestPrice, ma200w);
-    const trendScore = scoreTrendStrength(latestPrice, ma200w, ret90d);
     const rbScore = scoreRB(rainbowBand);
     const macroScore = scoreMacro(dxyValue);
     const mvrvScore = scoreMVRV(mvrvValue);
+    const nuplScore = scoreNUPL(nuplValue);
     const puellScore = scorePuell(puellValue);
+    const reserveScore = scoreReserveRisk(reserveRiskValue);
     const soprScore = scoreSOPR(soprValue);
 
-    // Weighted combine — re-normalize over available pillars
+    // Weighted combine
     let w = 0, sum = 0;
-    if (mvrvScore  != null) { sum += mvrvScore  * WEIGHTS.mvrv;      w += WEIGHTS.mvrv; }
-    sum += trendScore * WEIGHTS.trend;     w += WEIGHTS.trend;
-    sum += maScore    * WEIGHTS.ma200w;    w += WEIGHTS.ma200w;
-    if (fgScore != null)   { sum += fgScore    * WEIGHTS.fearGreed; w += WEIGHTS.fearGreed; }
+    const add = (s: number | null, weight: number) => { if (s != null) { sum += s * weight; w += weight; } };
+    add(mvrvScore, WEIGHTS.mvrv);
+    add(nuplScore, WEIGHTS.nupl);
+    add(puellScore, WEIGHTS.puell);
+    add(reserveScore, WEIGHTS.reserveRisk);
+    add(maScore, WEIGHTS.ma200w);
+    add(fgScore, WEIGHTS.fearGreed);
     const weightedScore = w > 0 ? Math.round((sum / w) * 5) : 0;
     const totalScore = weightedScore;
 
@@ -322,10 +330,14 @@ Deno.serve(async (req) => {
       puell_score: puellScore,
       lth_sopr_value: soprValue,
       lth_sopr_score: soprScore,
+      realized_price: realizedPrice,
+      nupl: nuplValue,
+      reserve_risk: reserveRiskValue,
       cycle_total_score: totalScore,
       cycle_phase: phase,
       strategy_signal: strategies[phase],
     } as any, { onConflict: "date" });
+
 
     return new Response(
       JSON.stringify({

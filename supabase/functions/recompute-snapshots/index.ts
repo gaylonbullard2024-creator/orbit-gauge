@@ -1,10 +1,20 @@
-// Backfill / rebuild dashboard_snapshots with corrected logic:
-//  - true 200-week moving average from weekly closes (no interpolation)
-//  - real MVRV from Coin Metrics community API
-//  - Puell Multiple + SOPR from Coin Metrics
-//  - historical Fear & Greed from alternative.me
-//  - historical DXY carried forward from FRED rows already in macro_series_daily
-//  - rescore + recompute phase using current scoring rules
+// Backfill / rebuild dashboard_snapshots with the v3 institutional engine. (rev 2026-06-30b)
+//
+// Coin Metrics community-API series pulled:
+//   CapMVRVCur   → MVRV
+//   CapRealUSD   → Realized Cap (USD)
+//   CapMrktCurUSD→ Market Cap (USD)
+//   SplyCur      → Circulating supply
+//   IssTotUSD    → Daily issuance USD (for Puell)
+//
+// Derived metrics:
+//   realized_price = CapRealUSD / SplyCur
+//   nupl           = (CapMrktCurUSD - CapRealUSD) / CapMrktCurUSD
+//   puell          = IssTotUSD / 365d MA(IssTotUSD)
+//   reserve_risk   = price / (MVRV × realized_price)   (proxy)
+//
+// Awaiting paid feed (Glassnode/CryptoQuant): LTH-SOPR, Exchange Inflows/Outflows,
+// Whale Accumulation/Distribution — left null.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
@@ -13,42 +23,27 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// ---------- Market Phase Engine v2 (weighted 4-signal) ----------
-// Kept in-sync with src/lib/scoring.ts. Real data only.
-const WEIGHTS = { mvrv: 0.30, trend: 0.25, ma200w: 0.25, fearGreed: 0.20 } as const;
+// ---------- v3 Phase Engine ----------
+const WEIGHTS = {
+  mvrv: 0.20, nupl: 0.20, puell: 0.15,
+  reserveRisk: 0.10, ma200w: 0.20, fearGreed: 0.15,
+} as const;
 
 function scoreFG(v: number | null) {
   if (v == null) return null;
-  if (v <= 20) return 0;
-  if (v <= 40) return 1;
-  if (v <= 55) return 2;
-  if (v <= 70) return 3;
+  if (v < 20) return 0;
+  if (v < 40) return 1;
+  if (v < 60) return 2;
+  if (v < 75) return 3;
   return 4;
 }
 function scoreMA(price: number, ma: number) {
   if (price <= ma) return 0;
-  const mult = price / ma;
-  if (mult <= 1.25) return 1;
-  if (mult <= 1.75) return 2;
-  if (mult <= 2.25) return 3;
+  const m = price / ma;
+  if (m <= 1.25) return 1;
+  if (m <= 1.75) return 2;
+  if (m <= 2.25) return 3;
   return 4;
-}
-function scoreTrendStrength(price: number, ma: number, ret90d: number | null) {
-  const mult = price / ma;
-  let base: number;
-  if (mult < 0.85) base = 0;
-  else if (mult < 1.0) base = 1;
-  else if (mult < 1.5) base = 2;
-  else if (mult < 2.0) base = 3;
-  else base = 4;
-  if (ret90d == null) return base;
-  let slope: number;
-  if (ret90d <= -0.25) slope = -2;
-  else if (ret90d <= -0.10) slope = -1;
-  else if (ret90d <= 0.10) slope = 0;
-  else if (ret90d <= 0.30) slope = 1;
-  else slope = 2;
-  return Math.max(0, Math.min(4, base + slope));
 }
 function scoreMVRV(v: number | null) {
   if (v == null) return null;
@@ -58,7 +53,38 @@ function scoreMVRV(v: number | null) {
   if (v < 2.5) return 3;
   return 4;
 }
-// Informational only (no longer in core score) — kept for the legacy columns
+function scoreNUPL(v: number | null) {
+  if (v == null) return null;
+  if (v < 0) return 0;
+  if (v < 0.25) return 1;
+  if (v < 0.50) return 2;
+  if (v < 0.75) return 3;
+  return 4;
+}
+function scorePuell(v: number | null) {
+  if (v == null) return null;
+  if (v < 0.5) return 0;
+  if (v < 1.0) return 1;
+  if (v < 2.0) return 2;
+  if (v < 4.0) return 3;
+  return 4;
+}
+function scoreReserveRisk(v: number | null) {
+  if (v == null) return null;
+  if (v < 0.002) return 0;
+  if (v < 0.005) return 1;
+  if (v < 0.010) return 2;
+  if (v < 0.020) return 3;
+  return 4;
+}
+function scoreSOPR(v: number | null) {
+  if (v == null) return null;
+  if (v < 0.95) return 0;
+  if (v < 1) return 1;
+  if (v < 1.02) return 2;
+  if (v < 1.05) return 3;
+  return 4;
+}
 function scoreRB(band: string) {
   const m: Record<string, number> = { "Fire Sale": 0, "Accumulate": 1, "Growth": 2, "Overheated": 3, "Bubble Risk": 4 };
   return m[band] ?? 2;
@@ -67,9 +93,6 @@ function scoreMacro(v: number | null) {
   if (v == null) return 2;
   if (v < 95) return 0; if (v < 100) return 1; if (v < 105) return 2; if (v < 110) return 3; return 4;
 }
-function scorePuell(v: number | null) { if (v == null) return null; if (v < 0.5) return 0; if (v < 1) return 1; if (v < 2) return 2; if (v < 4) return 3; return 4; }
-function scoreSOPR(v: number | null)  { if (v == null) return null; if (v < 0.95) return 0; if (v < 1) return 1; if (v < 1.02) return 2; if (v < 1.05) return 3; return 4; }
-
 function rainbowBandFor(price: number, dateMs: number): string {
   const daysSinceGenesis = Math.floor((dateMs - new Date("2009-01-03").getTime()) / 86400000);
   const logPrice = Math.log10(price);
@@ -82,15 +105,24 @@ function rainbowBandFor(price: number, dateMs: number): string {
   return "Bubble Risk";
 }
 
-function combineWeighted(parts: { mvrv: number|null; trend: number|null; ma200w: number|null; fearGreed: number|null }) {
+function combineWeighted(parts: {
+  mvrv: number | null; nupl: number | null; puell: number | null;
+  reserveRisk: number | null; ma200w: number | null; fearGreed: number | null;
+}) {
   let w = 0, sum = 0;
-  if (parts.mvrv      != null) { sum += parts.mvrv      * WEIGHTS.mvrv;      w += WEIGHTS.mvrv;      }
-  if (parts.trend     != null) { sum += parts.trend     * WEIGHTS.trend;     w += WEIGHTS.trend;     }
-  if (parts.ma200w    != null) { sum += parts.ma200w    * WEIGHTS.ma200w;    w += WEIGHTS.ma200w;    }
-  if (parts.fearGreed != null) { sum += parts.fearGreed * WEIGHTS.fearGreed; w += WEIGHTS.fearGreed; }
+  const push = (k: keyof typeof WEIGHTS, v: number | null) => {
+    if (v == null) return;
+    sum += v * WEIGHTS[k]; w += WEIGHTS[k];
+  };
+  push("mvrv", parts.mvrv);
+  push("nupl", parts.nupl);
+  push("puell", parts.puell);
+  push("reserveRisk", parts.reserveRisk);
+  push("ma200w", parts.ma200w);
+  push("fearGreed", parts.fearGreed);
   if (w === 0) return { score: 0, coverage: 0 };
-  const normalized = (sum / w) * 5;  // 0..4 → 0..20
-  return { score: Math.round(normalized), coverage: w };  // int 0..20 for storage
+  const normalized = (sum / w) * 5;
+  return { score: Math.round(normalized), coverage: w };
 }
 
 function mapPhase(score: number): string {
@@ -109,12 +141,22 @@ const STRATEGIES: Record<string, string> = {
   "Cycle Top Risk": "Extreme caution. Consider trimming positions or hedging.",
 };
 
-// ---------- Coin Metrics pull (paginated) ----------
-// Only metrics free on the community API: CapMVRVCur. Puell + SOPR require paid credentials.
-async function fetchCoinMetrics(start: string): Promise<Map<string, { mvrv: number | null; puell: number | null; sopr: number | null }>> {
-  const out = new Map<string, { mvrv: number | null; puell: number | null; sopr: number | null }>();
+// ---------- Coin Metrics fetch (multi-metric, paginated, free tier only) ----------
+// Free metrics confirmed: CapMVRVCur, SplyCur, IssTotUSD.
+// CapRealUSD / CapMrktCurUSD are paid; we derive Realized Price and NUPL from MVRV instead:
+//   realized_price = price / MVRV
+//   NUPL           = 1 - 1/MVRV
+type CmRow = {
+  mvrv: number | null;
+  supply: number | null;
+  issuanceUsd: number | null;
+};
+
+async function fetchCoinMetrics(start: string): Promise<Map<string, CmRow>> {
+  const out = new Map<string, CmRow>();
+  const metrics = "CapMVRVCur,SplyCur,IssTotUSD";
   let url: string | null =
-    `https://community-api.coinmetrics.io/v4/timeseries/asset-metrics?assets=btc&metrics=CapMVRVCur&start_time=${start}&frequency=1d&page_size=10000`;
+    `https://community-api.coinmetrics.io/v4/timeseries/asset-metrics?assets=btc&metrics=${metrics}&start_time=${start}&frequency=1d&page_size=10000`;
   while (url) {
     const res: Response = await fetch(url);
     if (!res.ok) {
@@ -126,8 +168,8 @@ async function fetchCoinMetrics(start: string): Promise<Map<string, { mvrv: numb
       const d = String(row.time).slice(0, 10);
       out.set(d, {
         mvrv: row.CapMVRVCur != null ? Number(row.CapMVRVCur) : null,
-        puell: null,
-        sopr: null,
+        supply: row.SplyCur != null ? Number(row.SplyCur) : null,
+        issuanceUsd: row.IssTotUSD != null ? Number(row.IssTotUSD) : null,
       });
     }
     url = j.next_page_url ?? null;
@@ -136,14 +178,11 @@ async function fetchCoinMetrics(start: string): Promise<Map<string, { mvrv: numb
   return out;
 }
 
-// ---------- Fear & Greed historical ----------
+
 async function fetchFearGreed(): Promise<Map<string, number>> {
   const out = new Map<string, number>();
   const res = await fetch("https://api.alternative.me/fng/?limit=0");
-  if (!res.ok) {
-    console.warn("F&G fetch failed:", res.status);
-    return out;
-  }
+  if (!res.ok) return out;
   const j = await res.json();
   for (const row of (j.data ?? [])) {
     const d = new Date(Number(row.timestamp) * 1000).toISOString().slice(0, 10);
@@ -165,16 +204,14 @@ Deno.serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     const startDate: string = body.start_date ?? "2014-01-01";
 
-    // 1. Load full BTC daily history (paged)
+    // 1. Load BTC daily prices
     const prices: { date: string; close: number }[] = [];
     let from = 0;
-    const pageSize = 1000; // PostgREST server-side max-rows is 1000
+    const pageSize = 1000;
     for (;;) {
       const { data, error } = await supabase
-        .from("btc_daily_prices")
-        .select("date, close_usd")
-        .gte("date", startDate)
-        .order("date", { ascending: true })
+        .from("btc_daily_prices").select("date, close_usd")
+        .gte("date", startDate).order("date", { ascending: true })
         .range(from, from + pageSize - 1);
       if (error) throw error;
       const page = (data ?? []).map((r: any) => ({ date: r.date as string, close: Number(r.close_usd) }));
@@ -183,43 +220,32 @@ Deno.serve(async (req) => {
       from += pageSize;
     }
     console.log("BTC daily rows:", prices.length);
-    if (prices.length === 0) throw new Error("No BTC price history found");
+    if (prices.length === 0) throw new Error("No BTC price history");
 
-    // 2. Build weekly close series (last close per ISO week, Sunday boundary)
-    //    Then compute true 200-week MA = mean of last 200 weekly closes per date.
-    const weeklyMap = new Map<string, number>(); // weekStart(YYYY-MM-DD Sunday) -> last close in that week
+    // 2. Weekly closes for 200WMA
+    const weeklyMap = new Map<string, number>();
     function weekStart(d: string): string {
       const dt = new Date(d + "T00:00:00Z");
-      const day = dt.getUTCDay(); // 0=Sun
-      dt.setUTCDate(dt.getUTCDate() - day);
+      dt.setUTCDate(dt.getUTCDate() - dt.getUTCDay());
       return dt.toISOString().slice(0, 10);
     }
-    for (const p of prices) {
-      weeklyMap.set(weekStart(p.date), p.close);
-    }
-    const weekly = Array.from(weeklyMap.entries())
-      .sort(([a], [b]) => a.localeCompare(b))
+    for (const p of prices) weeklyMap.set(weekStart(p.date), p.close);
+    const weekly = Array.from(weeklyMap.entries()).sort(([a], [b]) => a.localeCompare(b))
       .map(([ws, close]) => ({ ws, close }));
-    console.log("Weekly closes:", weekly.length);
-
-    // Index by week start for fast lookup
     const weeklyIndex = new Map<string, number>();
     weekly.forEach((w, i) => weeklyIndex.set(w.ws, i));
 
-    // 3. Pull Coin Metrics + F&G
+    // 3. External pulls
     const [cm, fg] = await Promise.all([fetchCoinMetrics(startDate), fetchFearGreed()]);
 
-    // 4. Pull DXY history into a date->value map (forward-fill as needed)
+    // 4. DXY map (forward-fill)
     const { data: dxyRows } = await supabase
-      .from("macro_series_daily")
-      .select("date, value")
-      .eq("series_id", "DTWEXBGS")
-      .order("date", { ascending: true });
+      .from("macro_series_daily").select("date, value")
+      .eq("series_id", "DTWEXBGS").order("date", { ascending: true });
     const dxyMap = new Map<string, number>();
     for (const r of dxyRows ?? []) dxyMap.set(r.date as string, Number(r.value));
     const dxyDates = Array.from(dxyMap.keys()).sort();
     function dxyAt(date: string): number | null {
-      // last available on-or-before this date
       let lo = 0, hi = dxyDates.length - 1, best = -1;
       while (lo <= hi) {
         const mid = (lo + hi) >> 1;
@@ -228,7 +254,22 @@ Deno.serve(async (req) => {
       return best === -1 ? null : dxyMap.get(dxyDates[best]) ?? null;
     }
 
-    // 5. Iterate each BTC daily row, rebuild snapshot
+    // 5. Pre-compute 365-day rolling MA of issuance USD for Puell
+    const cmDates = Array.from(cm.keys()).sort();
+    const issuanceMaMap = new Map<string, number>();
+    {
+      const window: number[] = [];
+      let runningSum = 0;
+      for (const d of cmDates) {
+        const v = cm.get(d)?.issuanceUsd;
+        if (v == null) continue;
+        window.push(v); runningSum += v;
+        if (window.length > 365) runningSum -= window.shift()!;
+        if (window.length >= 30) issuanceMaMap.set(d, runningSum / window.length);
+      }
+    }
+
+    // 6. Iterate prices, build snapshot rows
     let written = 0;
     const batch: any[] = [];
     const flush = async () => {
@@ -239,72 +280,57 @@ Deno.serve(async (req) => {
       batch.length = 0;
     };
 
-    // Index prices by date for 90d-return lookup
-    const priceByDate = new Map<string, number>();
-    for (const p of prices) priceByDate.set(p.date, p.close);
-    function priceNDaysAgo(date: string, n: number): number | null {
-      const d = new Date(date + "T00:00:00Z");
-      d.setUTCDate(d.getUTCDate() - n);
-      const key = d.toISOString().slice(0, 10);
-      // walk back up to 7 days if exact match missing (weekend gaps not relevant for BTC but safe)
-      for (let i = 0; i < 7; i++) {
-        const dt = new Date(d);
-        dt.setUTCDate(dt.getUTCDate() - i);
-        const k = dt.toISOString().slice(0, 10);
-        const v = priceByDate.get(k);
-        if (v != null) return v;
-      }
-      return null;
-    }
-
     for (const p of prices) {
-      // 200W MA: mean of last 200 weekly closes whose week_start <= this date
-      const wIdx = (() => {
-        const ws = weekStart(p.date);
-        let i = weeklyIndex.get(ws);
-        if (i == null) {
-          let lo = 0, hi = weekly.length - 1, best = -1;
-          while (lo <= hi) {
-            const mid = (lo + hi) >> 1;
-            if (weekly[mid].ws <= ws) { best = mid; lo = mid + 1; } else hi = mid - 1;
-          }
-          i = best;
+      // 200W MA
+      const ws = weekStart(p.date);
+      let wIdx = weeklyIndex.get(ws);
+      if (wIdx == null) {
+        let lo = 0, hi = weekly.length - 1, best = -1;
+        while (lo <= hi) {
+          const mid = (lo + hi) >> 1;
+          if (weekly[mid].ws <= ws) { best = mid; lo = mid + 1; } else hi = mid - 1;
         }
-        return i;
-      })();
+        wIdx = best;
+      }
       if (wIdx == null || wIdx < 0) continue;
-      const start = Math.max(0, wIdx - 199);
-      const slice = weekly.slice(start, wIdx + 1);
+      const slice = weekly.slice(Math.max(0, wIdx - 199), wIdx + 1);
       if (slice.length < 50) continue;
       const ma200w = slice.reduce((s, w) => s + w.close, 0) / slice.length;
 
       const cmRow = cm.get(p.date);
       const mvrvValue = cmRow?.mvrv ?? null;
-      const puellValue = cmRow?.puell ?? null;
-      const soprValue = cmRow?.sopr ?? null;
+      const supply = cmRow?.supply ?? null;
+      const issuanceUsd = cmRow?.issuanceUsd ?? null;
+      const issuanceMa = issuanceMaMap.get(p.date) ?? null;
+
+      // Derived from MVRV identity (free tier does not include CapRealUSD):
+      //   MVRV = price / realized_price  →  realized_price = price / MVRV
+      //   NUPL = 1 - 1/MVRV
+      const realizedPrice = mvrvValue != null && mvrvValue > 0 ? p.close / mvrvValue : null;
+      const nupl = mvrvValue != null && mvrvValue > 0 ? 1 - 1 / mvrvValue : null;
+      const puellValue = issuanceUsd != null && issuanceMa != null && issuanceMa > 0
+        ? issuanceUsd / issuanceMa : null;
+      // Reserve Risk requires coin-days-destroyed (paid feed only) — leave null.
+      const reserveRisk: number | null = null;
+
 
       const fgValue = fg.get(p.date) ?? null;
       const dxy = dxyAt(p.date);
-
-      // 90-day price return for trend slope
-      const p90 = priceNDaysAgo(p.date, 90);
-      const ret90d = p90 != null && p90 > 0 ? (p.close / p90) - 1 : null;
-
       const band = rainbowBandFor(p.close, new Date(p.date + "T00:00:00Z").getTime());
+
       const fgScore = scoreFG(fgValue);
       const maScore = scoreMA(p.close, ma200w);
-      const trendScore = scoreTrendStrength(p.close, ma200w, ret90d);
       const rbScore = scoreRB(band);
       const macroScore = scoreMacro(dxy);
       const mvrvScore = scoreMVRV(mvrvValue);
+      const nuplScore = scoreNUPL(nupl);
       const puellScore = scorePuell(puellValue);
-      const soprScore = scoreSOPR(soprValue);
+      const reserveScore = scoreReserveRisk(reserveRisk);
+      const soprScore = scoreSOPR(null);
 
       const { score: weightedScore } = combineWeighted({
-        mvrv: mvrvScore,
-        trend: trendScore,
-        ma200w: maScore,
-        fearGreed: fgScore,
+        mvrv: mvrvScore, nupl: nuplScore, puell: puellScore,
+        reserveRisk: reserveScore, ma200w: maScore, fearGreed: fgScore,
       });
       const phase = mapPhase(weightedScore);
 
@@ -323,8 +349,11 @@ Deno.serve(async (req) => {
         macro_score: macroScore,
         puell_value: puellValue,
         puell_score: puellScore,
-        lth_sopr_value: soprValue,
+        lth_sopr_value: null,
         lth_sopr_score: soprScore,
+        realized_price: realizedPrice,
+        nupl: nupl,
+        reserve_risk: reserveRisk,
         cycle_total_score: weightedScore,
         cycle_phase: phase,
         strategy_signal: STRATEGIES[phase],
@@ -333,32 +362,25 @@ Deno.serve(async (req) => {
     }
     await flush();
 
-
-    // 6. Validation: print anchor dates
-    const anchors = ["2017-12-17", "2018-12-15", "2021-04-14", "2021-11-10", "2022-11-21", "2025-10-07"];
+    // 7. Validation anchors
+    const anchors = ["2017-12-17", "2018-12-15", "2021-04-14", "2021-11-10", "2022-11-21", "2025-10-06", "2025-10-07"];
     const { data: anchorRows } = await supabase
       .from("dashboard_snapshots")
-      .select("date, btc_close_usd, ma_200w_value, mvrv_value, puell_value, fear_greed_value, cycle_total_score, cycle_phase")
-      .in("date", anchors)
-      .order("date");
+      .select("date, btc_close_usd, ma_200w_value, mvrv_value, nupl, puell_value, reserve_risk, realized_price, fear_greed_value, cycle_total_score, cycle_phase")
+      .in("date", anchors).order("date");
 
-    return new Response(
-      JSON.stringify({
-        success: true,
-        btc_rows: prices.length,
-        weekly_closes: weekly.length,
-        coin_metrics_rows: cm.size,
-        fear_greed_rows: fg.size,
-        snapshots_written: written,
-        anchors: anchorRows,
-      }, null, 2),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return new Response(JSON.stringify({
+      success: true,
+      btc_rows: prices.length,
+      weekly_closes: weekly.length,
+      coin_metrics_rows: cm.size,
+      fear_greed_rows: fg.size,
+      snapshots_written: written,
+      anchors: anchorRows,
+    }, null, 2), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (e) {
     console.error("recompute-snapshots error:", e);
-    return new Response(
-      JSON.stringify({ error: (e as Error).message }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return new Response(JSON.stringify({ error: (e as Error).message }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
 });

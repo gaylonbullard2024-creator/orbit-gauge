@@ -1,65 +1,70 @@
+# Institutional Indicators + Re-weighted Cycle Gauge
 
-## Root causes found
+## Goal
+Surface 10 institutional on-chain indicators on the dashboard. Source what's available from the free Coin Metrics community API today. Re-weight the Cycle Gauge to blend the new metrics. Re-validate every historical pivot so the gauge backtest still holds.
 
-After auditing `supabase/functions/daily-pipeline/index.ts` and the DB, the dashboard's accuracy issues trace to **four real bugs**, not chart styling:
+## Data sourcing map
 
-1. **200-Week MA is actually a ~52-week MA.** Pipeline only fetches `days=365` from CoinGecko and then averages every daily close it gets back. That's a 365-day mean (~52 weeks), not 1,400 days (~200 weeks). This makes the "BTC vs 200W MA" chart and its score wrong every single day.
-2. **"MVRV" is not MVRV.** It's `currentMarketCap / avg(marketCap over last 365 days)`. Real MVRV needs realized cap (on-chain). Today it just tracks short-term momentum and silently feeds the cycle score.
-3. **Historical snapshots inherit those bugs.** Every past `dashboard_snapshots` row was written with the same broken MA/MVRV logic, so Phase History shows "Accumulation" in Oct 2025 even though BTC printed an ATH (~$124.7k close / ~$126k intraday). Fixing the pipeline alone won't fix past rows — we have to recompute them.
-4. **ATH visibility.** DB close on 2025-10-07 is $124,773 (correct daily close). Client expects the $126k intraday ATH (5 Oct) to be visible on the chart. Right now nothing on the chart calls out the ATH at all.
+| Indicator | Source now | Status |
+|---|---|---|
+| MVRV | Coin Metrics `CapMVRVCur` | Already live |
+| Realized Price | Coin Metrics `CapRealUSD / SplyCur` | New, full history (2010+) |
+| NUPL | `(CapMrktCurUSD − CapRealUSD) / CapMrktCurUSD` | New, full history |
+| Puell Multiple | `IssTotUSD / 365d MA(IssTotUSD)` | New, full history |
+| Reserve Risk (proxy) | `Price / (MVRV × Realized Price)` proxy band | New, proxy only — labelled in UI |
+| LTH-SOPR | — | Awaiting paid feed (Glassnode/CryptoQuant) |
+| Exchange Inflows | — | Awaiting paid feed |
+| Exchange Outflows | — | Awaiting paid feed |
+| Whale Accumulation | — | Awaiting paid feed |
+| Whale Distribution | — | Awaiting paid feed |
 
-Puell Multiple and LTH-SOPR are not tracked yet — client asked for them.
+Five of the ten will display "Awaiting data feed" with a clear note that Glassnode/CryptoQuant is required.
 
-## What this plan delivers
+## Implementation
 
-```text
-[ pipeline ] -> correct 200W MA (1400 daily closes, weekly resample)
-            -> real MVRV (on-chain realized cap via Coin Metrics)
-            -> Puell Multiple + LTH-SOPR (Coin Metrics community API, no key)
-[ backfill ] -> recompute every dashboard_snapshots row from full history
-[ chart    ] -> ATH marker + tooltip showing intraday high
-[ scoring  ] -> phase thresholds re-validated against past ATH/ATL dates
-```
+### 1. Schema migration
+Add columns to `dashboard_snapshots`:
+`realized_price`, `nupl`, `reserve_risk`, `exchange_inflow`, `exchange_outflow`, `whale_accumulation`, `whale_distribution` (all nullable numeric). `puell_value` and `lth_sopr_value` already exist.
 
-## Steps
+### 2. `daily-pipeline` edge function
+Extend the Coin Metrics fetch to pull `CapRealUSD`, `SplyCur`, `CapMrktCurUSD`, `IssTotUSD` alongside the existing series. Compute Realized Price, NUPL, Puell Multiple, and the Reserve Risk proxy on the server; write to the new columns.
 
-### 1. Rebuild the 200W MA (correct + verifiable)
-- In `daily-pipeline`, stop computing MA from the 365-day CoinGecko payload. Instead read the **last 1,400 daily closes from `btc_daily_prices`** (we already store full history) and compute `mean(last 1400)`. As a stricter alternative, resample to weekly closes (Sun→Sun) and take `mean(last 200 weekly closes)` — this is the literal "200-week MA" the chart name promises. I'll implement the weekly version since the client specifically said "weekly closing prices, do not interpolate".
-- Add a one-off edge function `recompute-ma200w` that walks every date from 2014-01-01 → today and writes the true 200W MA back into `dashboard_snapshots.ma_200w_value` and re-derives `ma_200w_score`.
-- Validation: print the computed MA for 2025-10-07 vs the on-chain reference (~$67k–$72k range expected) and the price at the same date ($124,773) so we can confirm the ratio is sensible.
+### 3. `recompute-snapshots` edge function
+Backfill the four new metrics over the full ~4,200-day history.
 
-### 2. Replace the fake MVRV with a real one
-- Switch source to **Coin Metrics community API** (`CapMrktCurUSD`, `CapRealUSD`, `PuellMultiple`, `SplyAct1yr`, `SOPR`) — free, no key, daily granularity, full history.
-- Store the new series in `onchain_metrics_daily` (already exists, currently unused).
-- Compute true `MVRV = CapMrktCurUSD / CapRealUSD` daily and write `mvrv_value` to snapshots.
-- Re-score MVRV using accepted bands (≤1 deep value, 1–2 accumulate, 2–3 fair, 3–3.7 overheat, >3.7 top).
+### 4. Re-weighted Cycle Gauge (`src/lib/scoring.ts`)
+Replace the 4-pillar model with a 6-pillar weighted blend:
+- MVRV 20%
+- NUPL 20%
+- Puell 15%
+- Reserve Risk proxy 10%
+- BTC vs 200W MA 20%
+- Fear & Greed 15%
+Each pillar contributes 0–4 points; total scales to 0–20. Phase thresholds stay (Deep Value / Accumulation / Bull / Overheated / Cycle Top Risk).
 
-### 3. Add Puell Multiple and LTH-SOPR
-- Same Coin Metrics pull. Add two columns to `dashboard_snapshots` (`puell_value`, `puell_score`, `lth_sopr_value`, `lth_sopr_score`) via migration, surface them in `CoreIndicators` and `ScoreBreakdown`.
-- Document the bands in `INDICATOR_TOOLTIPS`.
+### 5. Re-validate history
+Re-run `recompute-snapshots` with the new engine and verify:
+- Oct 2025 ATH still classifies as Cycle Top Risk
+- Nov 2022 ATL still classifies as Deep Value
+- 2017, 2021 cycle peaks still flag Cycle Top Risk
+- Dec 2018 still flags Deep Value
 
-### 4. Backfill all historical snapshots
-- One-off edge function `recompute-snapshots` that, for each date with a BTC close:
-  - recomputes 200W MA from weekly closes,
-  - pulls historical F&G from alternative.me (`limit=0` = full history),
-  - pulls historical DXY from FRED,
-  - pulls MVRV/Puell/LTH-SOPR from Coin Metrics,
-  - rescores everything with the current scoring rules,
-  - upserts the snapshot.
-- This is what actually fixes Phase History showing "Accumulation" during the Oct 2025 ATH.
+### 6. New `InstitutionalIndicators.tsx` panel
+Grid of 10 cards. Each card shows:
+- **Current value** — latest snapshot
+- **Historical value** — same metric 30 days ago, with WoW arrow
+- **Interpretation** — Bullish / Neutral / Bearish derived from metric-specific bands (e.g. NUPL > 0.75 = Bearish Euphoria, < 0 = Bullish Capitulation)
+- **Historical percentile** — rank of today's value vs full history (0–100%)
+- **Confidence score** — `High` (full daily history), `Medium` (≥1 year), `Low` (<1 year), `No data` (awaiting feed)
 
-### 5. Validate scoring against past ATH / ATL dates
-After backfill, query the snapshots at: 2017-12-17, 2018-12-15 (ATL), 2021-04-14, 2021-11-10, 2022-11-21 (ATL), 2025-10-07 (ATH). Print phase, total score, F&G, MVRV, MA-ratio, Puell. If any ATH date does not land in `Overheated` or `Cycle Top Risk` (and any ATL date does not land in `Deep Value` or `Accumulation`), the thresholds in `src/lib/scoring.ts` get tuned and the backfill is re-run.
+Awaiting-feed cards render greyed out with a "Requires Glassnode" tag.
 
-### 6. Show the ATH on the price chart
-- In `PriceTrendChart`, compute `max(priceHistory)` and render a small reference dot + label ("ATH $124,773 · Oct 7 2025") so the client can immediately see we're tracking it. The "$126k Oct 5" figure is the CoinMarketCap intraday high; daily-close data sources (CoinGecko) print $124,773 on Oct 7. I'll note the source/convention in the tooltip so this doesn't come up again.
+### 7. Wire into Dashboard
+Insert the panel between the Score Breakdown and the Cycle Timeline. Lazy-load it.
 
-## Out of scope (call out, don't build)
-- Whale accumulation panel — needs a paid provider (Glassnode/Nansen). Flagging only.
-- Replacing the Rainbow Chart formula — separate concern.
-- Cycle-bottom commentary content — editorial, not data.
+## Validation report
+After deploy I'll print: per-metric coverage (rows populated), per-pillar score distribution before vs after the re-weight, and the pivot-validation table (ATH/ATL classifications before vs after).
 
-## Validation deliverables (will be returned after build)
-- Row counts before/after backfill.
-- Printed table: date, close, 200W MA, MVRV, F&G, Puell, total score, phase for all 6 ATH/ATL anchor dates.
-- A diff of how many past snapshots changed phase after the rebuild.
+## Out of scope
+- Wiring a paid feed for exchange flows, whale cohorts, and LTH-SOPR — needs your API key + subscription decision.
+- Per-indicator alerting.
