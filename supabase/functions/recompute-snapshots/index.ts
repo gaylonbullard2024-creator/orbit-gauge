@@ -90,7 +90,7 @@ function combineWeighted(parts: { mvrv: number|null; trend: number|null; ma200w:
   if (parts.fearGreed != null) { sum += parts.fearGreed * WEIGHTS.fearGreed; w += WEIGHTS.fearGreed; }
   if (w === 0) return { score: 0, coverage: 0 };
   const normalized = (sum / w) * 5;  // 0..4 → 0..20
-  return { score: Math.round(normalized * 10) / 10, coverage: w };
+  return { score: Math.round(normalized), coverage: w };  // int 0..20 for storage
 }
 
 function mapPhase(score: number): string {
