@@ -298,6 +298,42 @@ export function FearGreedGauge({
               ))}
             </div>
 
+            {/* Recommendation panel */}
+            <div className="grid grid-cols-2 gap-2 rounded-lg border border-border/50 bg-muted/20 p-2.5">
+              <div>
+                <div className="text-[9px] uppercase tracking-wider text-muted-foreground">Zone</div>
+                <div className="text-xs font-semibold" style={{ color }}>{classification}</div>
+              </div>
+              <div>
+                <div className="text-[9px] uppercase tracking-wider text-muted-foreground">Historical Position</div>
+                <div className="text-xs font-semibold text-foreground">
+                  {percentile != null ? historicalPositionLabel(percentile) : '—'}
+                  {percentile != null && (
+                    <span className="ml-1 font-mono text-[10px] text-muted-foreground">({percentile}%)</span>
+                  )}
+                </div>
+              </div>
+              <div className="col-span-2">
+                <div className="text-[9px] uppercase tracking-wider text-muted-foreground">Recommendation</div>
+                <span className={`mt-0.5 inline-block rounded border px-1.5 py-0.5 text-[11px] font-semibold ${recTone}`}>
+                  {recommendation}
+                </span>
+              </div>
+              <div className="col-span-2">
+                <div className="flex items-center justify-between text-[9px] uppercase tracking-wider text-muted-foreground">
+                  <span>Confidence</span>
+                  <span className="font-mono text-foreground/90">{confidence}%</span>
+                </div>
+                <div className="mt-1 h-1 w-full overflow-hidden rounded-full bg-muted/50">
+                  <div
+                    className="h-full rounded-full bg-primary/70"
+                    style={{ width: `${confidence}%` }}
+                  />
+                </div>
+              </div>
+            </div>
+
+
             {/* Mini sparkline */}
             {history && history.length > 1 && (
               <div>
