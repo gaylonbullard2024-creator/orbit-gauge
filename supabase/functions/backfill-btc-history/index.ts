@@ -20,7 +20,7 @@ Deno.serve(async (req) => {
     // Coin Metrics community API has full BTC history (PriceUSD, CapMrktCurUSD, VolumeUSD24h) since 2010, free.
     const rows: { date: string; close_usd: number; market_cap_usd: number | null; volume_usd: number | null; source: string }[] = [];
     let url: string | null =
-      "https://community-api.coinmetrics.io/v4/timeseries/asset-metrics?assets=btc&metrics=PriceUSD,CapMrktCurUSD,VolumeUSD24h&start_time=2013-01-01&frequency=1d&page_size=10000";
+      "https://community-api.coinmetrics.io/v4/timeseries/asset-metrics?assets=btc&metrics=PriceUSD,CapMrktCurUSD&start_time=2013-01-01&frequency=1d&page_size=10000";
     while (url) {
       const r: Response = await fetch(url);
       if (!r.ok) throw new Error(`Coin Metrics ${r.status}: ${await r.text()}`);
