@@ -52,6 +52,8 @@ export type Database = {
           cycle_phase: string | null
           cycle_total_score: number | null
           date: string
+          exchange_inflow: number | null
+          exchange_outflow: number | null
           fear_greed_score: number | null
           fear_greed_value: number | null
           lth_sopr_score: number | null
@@ -62,12 +64,17 @@ export type Database = {
           macro_value: number | null
           mvrv_score: number | null
           mvrv_value: number | null
+          nupl: number | null
           puell_score: number | null
           puell_value: number | null
           rainbow_band: string | null
           rainbow_score: number | null
+          realized_price: number | null
+          reserve_risk: number | null
           strategy_signal: string | null
           updated_at: string
+          whale_accumulation: number | null
+          whale_distribution: number | null
         }
         Insert: {
           btc_close_usd?: number | null
@@ -76,6 +83,8 @@ export type Database = {
           cycle_phase?: string | null
           cycle_total_score?: number | null
           date: string
+          exchange_inflow?: number | null
+          exchange_outflow?: number | null
           fear_greed_score?: number | null
           fear_greed_value?: number | null
           lth_sopr_score?: number | null
@@ -86,12 +95,17 @@ export type Database = {
           macro_value?: number | null
           mvrv_score?: number | null
           mvrv_value?: number | null
+          nupl?: number | null
           puell_score?: number | null
           puell_value?: number | null
           rainbow_band?: string | null
           rainbow_score?: number | null
+          realized_price?: number | null
+          reserve_risk?: number | null
           strategy_signal?: string | null
           updated_at?: string
+          whale_accumulation?: number | null
+          whale_distribution?: number | null
         }
         Update: {
           btc_close_usd?: number | null
@@ -100,6 +114,8 @@ export type Database = {
           cycle_phase?: string | null
           cycle_total_score?: number | null
           date?: string
+          exchange_inflow?: number | null
+          exchange_outflow?: number | null
           fear_greed_score?: number | null
           fear_greed_value?: number | null
           lth_sopr_score?: number | null
@@ -110,12 +126,17 @@ export type Database = {
           macro_value?: number | null
           mvrv_score?: number | null
           mvrv_value?: number | null
+          nupl?: number | null
           puell_score?: number | null
           puell_value?: number | null
           rainbow_band?: string | null
           rainbow_score?: number | null
+          realized_price?: number | null
+          reserve_risk?: number | null
           strategy_signal?: string | null
           updated_at?: string
+          whale_accumulation?: number | null
+          whale_distribution?: number | null
         }
         Relationships: []
       }
