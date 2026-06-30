@@ -144,6 +144,14 @@ export default function Dashboard() {
           <ScoreBreakdown snapshot={snapshot} totalScore={totalScore} maxScore={maxScore} />
         )}
 
+        {/* Institutional Indicators — 10-signal panel */}
+        <section>
+          <Suspense fallback={<ChartFallback />}>
+            <InstitutionalIndicators />
+          </Suspense>
+        </section>
+
+
         {/* Weekly Summary */}
         {!isLoading && snapshot && (
           <section>
