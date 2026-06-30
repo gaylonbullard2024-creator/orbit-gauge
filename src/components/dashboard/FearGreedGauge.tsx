@@ -159,9 +159,10 @@ export function FearGreedGauge({
         </div>
       </CardHeader>
       <CardContent>
-        <div className="flex flex-col sm:flex-row items-center gap-4">
+        <div className="flex flex-col items-center gap-4">
           {/* Gauge — alternative.me style */}
           <div className="relative w-full max-w-[260px] shrink-0">
+
             {/* Classification label above */}
             <div className="text-center mb-1">
               <span className="text-xs text-muted-foreground">Now:</span>
