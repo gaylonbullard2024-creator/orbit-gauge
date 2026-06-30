@@ -45,6 +45,10 @@ const CycleValidation = lazy(() =>
 const InstitutionalIndicators = lazy(() =>
   import('@/components/dashboard/InstitutionalIndicators').then((m) => ({ default: m.InstitutionalIndicators }))
 );
+const DataIntegrityPanel = lazy(() =>
+  import('@/components/dashboard/DataIntegrityPanel').then((m) => ({ default: m.DataIntegrityPanel }))
+);
+
 
 
 
@@ -239,6 +243,13 @@ export default function Dashboard() {
 
 
 
+        {/* Data Integrity Validator */}
+        <section>
+          <Suspense fallback={<ChartFallback />}>
+            <DataIntegrityPanel />
+          </Suspense>
+        </section>
+
         {/* Weekly Commentary */}
         <section>
           <WeeklyCommentary
@@ -247,6 +258,7 @@ export default function Dashboard() {
             weekEnding={report?.week_ending ?? null}
           />
         </section>
+
 
         <footer className="text-center py-6 text-xs text-muted-foreground/50">
           <p>Data refreshed daily ~6 AM ET · Not financial advice</p>
