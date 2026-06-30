@@ -99,6 +99,9 @@ const INDICATORS: IndicatorDef[] = [
     interpret: (v) => (v < 0.005 ? 'Bullish' : v < 0.02 ? 'Neutral' : 'Bearish'),
     awaiting: true, paidNote: 'Requires Glassnode',
   },
+];
+
+
 
 
 async function fetchInstitutional(): Promise<Row[]> {
