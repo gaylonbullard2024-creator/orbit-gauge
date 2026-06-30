@@ -239,14 +239,30 @@ Deno.serve(async (req) => {
       batch.length = 0;
     };
 
+    // Index prices by date for 90d-return lookup
+    const priceByDate = new Map<string, number>();
+    for (const p of prices) priceByDate.set(p.date, p.close);
+    function priceNDaysAgo(date: string, n: number): number | null {
+      const d = new Date(date + "T00:00:00Z");
+      d.setUTCDate(d.getUTCDate() - n);
+      const key = d.toISOString().slice(0, 10);
+      // walk back up to 7 days if exact match missing (weekend gaps not relevant for BTC but safe)
+      for (let i = 0; i < 7; i++) {
+        const dt = new Date(d);
+        dt.setUTCDate(dt.getUTCDate() - i);
+        const k = dt.toISOString().slice(0, 10);
+        const v = priceByDate.get(k);
+        if (v != null) return v;
+      }
+      return null;
+    }
+
     for (const p of prices) {
       // 200W MA: mean of last 200 weekly closes whose week_start <= this date
       const wIdx = (() => {
-        // find last weekStart <= p.date
         const ws = weekStart(p.date);
         let i = weeklyIndex.get(ws);
         if (i == null) {
-          // binary search fallback
           let lo = 0, hi = weekly.length - 1, best = -1;
           while (lo <= hi) {
             const mid = (lo + hi) >> 1;
@@ -259,7 +275,7 @@ Deno.serve(async (req) => {
       if (wIdx == null || wIdx < 0) continue;
       const start = Math.max(0, wIdx - 199);
       const slice = weekly.slice(start, wIdx + 1);
-      if (slice.length < 50) continue; // not enough history to be meaningful
+      if (slice.length < 50) continue;
       const ma200w = slice.reduce((s, w) => s + w.close, 0) / slice.length;
 
       const cmRow = cm.get(p.date);
@@ -270,23 +286,27 @@ Deno.serve(async (req) => {
       const fgValue = fg.get(p.date) ?? null;
       const dxy = dxyAt(p.date);
 
+      // 90-day price return for trend slope
+      const p90 = priceNDaysAgo(p.date, 90);
+      const ret90d = p90 != null && p90 > 0 ? (p.close / p90) - 1 : null;
+
       const band = rainbowBandFor(p.close, new Date(p.date + "T00:00:00Z").getTime());
       const fgScore = scoreFG(fgValue);
-      const maScore = scoreTrend(p.close, ma200w);
+      const maScore = scoreMA(p.close, ma200w);
+      const trendScore = scoreTrendStrength(p.close, ma200w, ret90d);
       const rbScore = scoreRB(band);
       const macroScore = scoreMacro(dxy);
       const mvrvScore = scoreMVRV(mvrvValue);
       const puellScore = scorePuell(puellValue);
       const soprScore = scoreSOPR(soprValue);
 
-      const hasMvrv = mvrvScore != null;
-      const total =
-        (fgScore ?? 2) +
-        maScore +
-        rbScore +
-        macroScore +
-        (hasMvrv ? (mvrvScore as number) : 0);
-      const phase = mapPhase(total, hasMvrv);
+      const { score: weightedScore } = combineWeighted({
+        mvrv: mvrvScore,
+        trend: trendScore,
+        ma200w: maScore,
+        fearGreed: fgScore,
+      });
+      const phase = mapPhase(weightedScore);
 
       batch.push({
         date: p.date,
@@ -305,13 +325,14 @@ Deno.serve(async (req) => {
         puell_score: puellScore,
         lth_sopr_value: soprValue,
         lth_sopr_score: soprScore,
-        cycle_total_score: total,
+        cycle_total_score: weightedScore,
         cycle_phase: phase,
         strategy_signal: STRATEGIES[phase],
       });
       if (batch.length >= 500) await flush();
     }
     await flush();
+
 
     // 6. Validation: print anchor dates
     const anchors = ["2017-12-17", "2018-12-15", "2021-04-14", "2021-11-10", "2022-11-21", "2025-10-07"];
