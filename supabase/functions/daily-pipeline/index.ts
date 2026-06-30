@@ -230,7 +230,7 @@ Deno.serve(async (req) => {
     let soprValue: number | null = null;
     try {
       const cmRes = await fetch(
-        "https://community-api.coinmetrics.io/v4/timeseries/asset-metrics?assets=btc&metrics=CapMVRVCur,PuellMultiple,SOPR&frequency=1d&page_size=10&end_time=" +
+        "https://community-api.coinmetrics.io/v4/timeseries/asset-metrics?assets=btc&metrics=CapMVRVCur&frequency=1d&page_size=10&end_time=" +
           encodeURIComponent(today + "T23:59:59Z")
       );
       if (cmRes.ok) {
