@@ -32,7 +32,7 @@ Deno.serve(async (req) => {
           date,
           close_usd: Number(row.PriceUSD),
           market_cap_usd: row.CapMrktCurUSD != null ? Number(row.CapMrktCurUSD) : null,
-          volume_usd: row.VolumeUSD24h != null ? Number(row.VolumeUSD24h) : null,
+          volume_usd: null,
           source: "coinmetrics",
         });
       }
