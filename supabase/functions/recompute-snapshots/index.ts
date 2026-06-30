@@ -299,20 +299,20 @@ Deno.serve(async (req) => {
 
       const cmRow = cm.get(p.date);
       const mvrvValue = cmRow?.mvrv ?? null;
-      const realizedCap = cmRow?.realizedCap ?? null;
-      const marketCap = cmRow?.marketCap ?? null;
       const supply = cmRow?.supply ?? null;
       const issuanceUsd = cmRow?.issuanceUsd ?? null;
       const issuanceMa = issuanceMaMap.get(p.date) ?? null;
 
-      const realizedPrice = realizedCap != null && supply != null && supply > 0
-        ? realizedCap / supply : null;
-      const nupl = realizedCap != null && marketCap != null && marketCap > 0
-        ? (marketCap - realizedCap) / marketCap : null;
+      // Derived from MVRV identity (free tier does not include CapRealUSD):
+      //   MVRV = price / realized_price  →  realized_price = price / MVRV
+      //   NUPL = 1 - 1/MVRV
+      const realizedPrice = mvrvValue != null && mvrvValue > 0 ? p.close / mvrvValue : null;
+      const nupl = mvrvValue != null && mvrvValue > 0 ? 1 - 1 / mvrvValue : null;
       const puellValue = issuanceUsd != null && issuanceMa != null && issuanceMa > 0
         ? issuanceUsd / issuanceMa : null;
-      const reserveRisk = mvrvValue != null && realizedPrice != null && mvrvValue > 0 && realizedPrice > 0
-        ? p.close / (mvrvValue * realizedPrice) : null;
+      // Reserve Risk requires coin-days-destroyed (paid feed only) — leave null.
+      const reserveRisk: number | null = null;
+
 
       const fgValue = fg.get(p.date) ?? null;
       const dxy = dxyAt(p.date);
