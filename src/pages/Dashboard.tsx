@@ -39,6 +39,10 @@ const PowerLawBacktest = lazy(() =>
 const PhaseHistory = lazy(() =>
   import('@/components/dashboard/PhaseHistory').then((m) => ({ default: m.PhaseHistory }))
 );
+const CycleValidation = lazy(() =>
+  import('@/components/dashboard/CycleValidation').then((m) => ({ default: m.CycleValidation }))
+);
+
 
 const ChartFallback = () => (
   <div className="rounded-2xl border border-border/50 bg-card/50 p-4">
@@ -213,6 +217,15 @@ export default function Dashboard() {
             </Suspense>
           </section>
         )}
+
+        {/* Historical Cycle Validation */}
+        <section>
+          <Suspense fallback={<ChartFallback />}>
+            <CycleValidation latest={snapshot} />
+          </Suspense>
+        </section>
+
+
 
         {/* Weekly Commentary */}
         <section>
