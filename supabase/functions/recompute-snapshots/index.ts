@@ -1,4 +1,4 @@
-// Backfill / rebuild dashboard_snapshots with the v3 institutional engine.
+// Backfill / rebuild dashboard_snapshots with the v3 institutional engine. (rev 2026-06-30b)
 //
 // Coin Metrics community-API series pulled:
 //   CapMVRVCur   → MVRV
