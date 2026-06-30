@@ -118,9 +118,42 @@ Deno.serve(async (req) => {
       }
     }
 
-    // 4. Calculate 200W MA (rolling 1400-day average)
-    const dailyCloses = prices.map((p) => p[1]);
-    const ma200w = dailyCloses.reduce((sum, v) => sum + v, 0) / dailyCloses.length;
+    // 4. True 200-Week MA from stored daily history (no interpolation):
+    //    Build last-close-per-week from btc_daily_prices, average the last 200 weekly closes.
+    const weeklyCloses: { ws: string; close: number }[] = [];
+    {
+      const all: { date: string; close: number }[] = [];
+      let from = 0;
+      const pageSize = 5000;
+      for (;;) {
+        const { data, error } = await supabase
+          .from("btc_daily_prices")
+          .select("date, close_usd")
+          .order("date", { ascending: true })
+          .range(from, from + pageSize - 1);
+        if (error) throw new Error(`btc_daily_prices read failed: ${error.message}`);
+        const page = (data ?? []).map((r: any) => ({ date: r.date as string, close: Number(r.close_usd) }));
+        all.push(...page);
+        if (page.length < pageSize) break;
+        from += pageSize;
+      }
+      const map = new Map<string, number>();
+      for (const r of all) {
+        const dt = new Date(r.date + "T00:00:00Z");
+        dt.setUTCDate(dt.getUTCDate() - dt.getUTCDay()); // Sunday boundary
+        map.set(dt.toISOString().slice(0, 10), r.close);
+      }
+      // Ensure today's close is reflected in the current week
+      const tdt = new Date(today + "T00:00:00Z");
+      tdt.setUTCDate(tdt.getUTCDate() - tdt.getUTCDay());
+      map.set(tdt.toISOString().slice(0, 10), latestPrice);
+      for (const [ws, close] of Array.from(map.entries()).sort(([a],[b]) => a.localeCompare(b))) {
+        weeklyCloses.push({ ws, close });
+      }
+    }
+    const last200 = weeklyCloses.slice(-200);
+    const ma200w = last200.reduce((s, w) => s + w.close, 0) / Math.max(1, last200.length);
+    console.log(`200W MA computed from ${last200.length} weekly closes -> ${ma200w.toFixed(2)}`);
 
     // 5. Calculate rainbow band
     const daysSinceGenesis = Math.floor(
@@ -166,27 +199,72 @@ Deno.serve(async (req) => {
       if (v < 110) return 3;
       return 4;
     }
+    function scoreMVRV(v: number | null) {
+      if (v == null) return null;
+      if (v < 1) return 0;
+      if (v < 2) return 1;
+      if (v < 3) return 2;
+      if (v < 3.7) return 3;
+      return 4;
+    }
+    function scorePuell(v: number | null) {
+      if (v == null) return null;
+      if (v < 0.5) return 0;
+      if (v < 1.0) return 1;
+      if (v < 2.0) return 2;
+      if (v < 4.0) return 3;
+      return 4;
+    }
+    function scoreSOPR(v: number | null) {
+      if (v == null) return null;
+      if (v < 0.95) return 0;
+      if (v < 1.0) return 1;
+      if (v < 1.02) return 2;
+      if (v < 1.05) return 3;
+      return 4;
+    }
 
-    // 6b. Calculate MVRV ratio (market cap / avg market cap)
+    // 6b. Real on-chain metrics from Coin Metrics community API
     let mvrvValue: number | null = null;
-    let mvrvScore = 0;
-    if (latestMcap && marketCaps.length > 30) {
-      const avgMcap = marketCaps.reduce((sum, m) => sum + m[1], 0) / marketCaps.length;
-      mvrvValue = latestMcap / avgMcap;
-      // Score: <0.8 deep value, 0.8-1.0 accumulate, 1.0-1.2 growth, 1.2-1.5 overheated, >1.5 bubble
-      if (mvrvValue < 0.8) mvrvScore = 0;
-      else if (mvrvValue < 1.0) mvrvScore = 1;
-      else if (mvrvValue < 1.2) mvrvScore = 2;
-      else if (mvrvValue < 1.5) mvrvScore = 3;
-      else mvrvScore = 4;
+    let puellValue: number | null = null;
+    let soprValue: number | null = null;
+    try {
+      const cmRes = await fetch(
+        "https://community-api.coinmetrics.io/v4/timeseries/asset-metrics?assets=btc&metrics=CapMVRVCur,PuellMultiple,SOPR&frequency=1d&page_size=10&end_time=" +
+          encodeURIComponent(today + "T23:59:59Z")
+      );
+      if (cmRes.ok) {
+        const cmJ: any = await cmRes.json();
+        const rows = (cmJ.data ?? []).slice().reverse();
+        for (const r of rows) {
+          if (mvrvValue == null && r.CapMVRVCur != null) mvrvValue = Number(r.CapMVRVCur);
+          if (puellValue == null && r.PuellMultiple != null) puellValue = Number(r.PuellMultiple);
+          if (soprValue == null && r.SOPR != null) soprValue = Number(r.SOPR);
+          if (mvrvValue != null && puellValue != null && soprValue != null) break;
+        }
+        console.log("Coin Metrics latest:", { mvrvValue, puellValue, soprValue });
+        // persist onchain_metrics_daily
+        await supabase.from("onchain_metrics_daily").upsert({
+          date: today, mvrv: mvrvValue, puell: puellValue, sopr: soprValue, source: "coinmetrics",
+        } as any, { onConflict: "date" });
+      } else {
+        console.warn("Coin Metrics fetch failed:", cmRes.status, await cmRes.text());
+      }
+    } catch (e) {
+      console.warn("Coin Metrics error:", (e as Error).message);
     }
 
     const fgScore = scoreFG(fgValue);
     const maScore = scoreTrend(latestPrice, ma200w);
     const rbScore = scoreRB(rainbowBand);
     const macroScore = scoreMacro(dxyValue);
-    const hasMvrv = mvrvValue != null;
-    const totalScore = fgScore + maScore + rbScore + macroScore + (hasMvrv ? mvrvScore : 0);
+    const mvrvScore = scoreMVRV(mvrvValue);
+    const puellScore = scorePuell(puellValue);
+    const soprScore = scoreSOPR(soprValue);
+
+    const hasMvrv = mvrvScore != null;
+    const totalScore =
+      fgScore + maScore + rbScore + macroScore + (hasMvrv ? (mvrvScore as number) : 0);
 
     // Map to phase
     const maxScore = hasMvrv ? 20 : 16;
@@ -220,10 +298,14 @@ Deno.serve(async (req) => {
       rainbow_score: rbScore,
       macro_value: dxyValue,
       macro_score: macroScore,
+      puell_value: puellValue,
+      puell_score: puellScore,
+      lth_sopr_value: soprValue,
+      lth_sopr_score: soprScore,
       cycle_total_score: totalScore,
       cycle_phase: phase,
       strategy_signal: strategies[phase],
-    }, { onConflict: "date" });
+    } as any, { onConflict: "date" });
 
     return new Response(
       JSON.stringify({
