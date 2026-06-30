@@ -102,6 +102,30 @@ export function FearGreedGauge({
     return -180 + pct * 180; // -180 (left) to 0 (right)
   }, [value]);
 
+  const { percentile, confidence } = useMemo(() => {
+    const vals = (history ?? [])
+      .map((h) => h.value)
+      .filter((v): v is number => typeof v === 'number' && Number.isFinite(v));
+    if (vals.length < 10) {
+      return { percentile: null as number | null, confidence: vals.length === 0 ? 0 : 50 };
+    }
+    const sorted = [...vals].sort((a, b) => a - b);
+    let lo = 0, hi = sorted.length;
+    while (lo < hi) {
+      const mid = (lo + hi) >> 1;
+      if (sorted[mid] < value) lo = mid + 1; else hi = mid;
+    }
+    const pct = Math.round((lo / sorted.length) * 100);
+    // Confidence: more historical depth + stronger distance from neutral → higher
+    const depthScore = Math.min(1, vals.length / 365); // 0..1 over a year
+    const extremity = Math.min(1, Math.abs(value - 50) / 50); // 0 at neutral, 1 at extreme
+    const conf = Math.round((0.55 * depthScore + 0.45 * extremity) * 100);
+    return { percentile: pct, confidence: conf };
+  }, [history, value]);
+
+  const recommendation = getRecommendation(value);
+  const recTone = getRecommendationTone(value);
+
   const cx = 150;
   const cy = 145;
   const rOuter = 125;
