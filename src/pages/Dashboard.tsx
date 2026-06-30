@@ -42,6 +42,10 @@ const PhaseHistory = lazy(() =>
 const CycleValidation = lazy(() =>
   import('@/components/dashboard/CycleValidation').then((m) => ({ default: m.CycleValidation }))
 );
+const InstitutionalIndicators = lazy(() =>
+  import('@/components/dashboard/InstitutionalIndicators').then((m) => ({ default: m.InstitutionalIndicators }))
+);
+
 
 
 const ChartFallback = () => (
