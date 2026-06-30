@@ -30,36 +30,37 @@ export interface HistoricalPoint {
   value: number;
 }
 
+// A snapshot is considered "complete" only when the core inputs the Cycle
+// Gauge depends on are populated. This guards against partially-ingested
+// daily rows (e.g. MVRV pending) collapsing the gauge to 0.
+const SNAPSHOT_COLUMNS = '*';
+
+async function fetchLatestComplete(skip = 0): Promise<DashboardSnapshot | null> {
+  const { data, error } = await supabase
+    .from('dashboard_snapshots')
+    .select(SNAPSHOT_COLUMNS)
+    .not('cycle_total_score', 'is', null)
+    .not('mvrv_score', 'is', null)
+    .not('btc_close_usd', 'is', null)
+    .order('date', { ascending: false })
+    .range(skip, skip)
+    .maybeSingle();
+  if (error) throw error;
+  return data as DashboardSnapshot | null;
+}
+
 export function useLatestSnapshot() {
   return useQuery({
-    queryKey: ['dashboard-snapshot-latest'],
-    queryFn: async (): Promise<DashboardSnapshot | null> => {
-      const { data, error } = await supabase
-        .from('dashboard_snapshots')
-        .select('*')
-        .order('date', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      if (error) throw error;
-      return data;
-    },
+    queryKey: ['dashboard-snapshot-latest-v2'],
+    queryFn: () => fetchLatestComplete(0),
     staleTime: 5 * 60 * 1000,
   });
 }
 
 export function usePreviousSnapshot() {
   return useQuery({
-    queryKey: ['dashboard-snapshot-previous'],
-    queryFn: async (): Promise<DashboardSnapshot | null> => {
-      const { data, error } = await supabase
-        .from('dashboard_snapshots')
-        .select('*')
-        .order('date', { ascending: false })
-        .range(1, 1)
-        .maybeSingle();
-      if (error) throw error;
-      return data;
-    },
+    queryKey: ['dashboard-snapshot-previous-v2'],
+    queryFn: () => fetchLatestComplete(1),
     staleTime: 5 * 60 * 1000,
   });
 }
