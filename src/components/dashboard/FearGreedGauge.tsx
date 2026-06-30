@@ -14,19 +14,20 @@ interface FearGreedGaugeProps {
   tooltip?: string;
 }
 
+// Official alternative.me bands
 const ZONES = [
-  { label: 'Extreme Fear', min: 0, max: 25, color: 'hsl(0, 72%, 51%)' },
-  { label: 'Fear', min: 25, max: 40, color: 'hsl(28, 90%, 55%)' },
+  { label: 'Extreme Fear', min: 0, max: 20, color: 'hsl(0, 72%, 51%)' },
+  { label: 'Fear', min: 20, max: 40, color: 'hsl(28, 90%, 55%)' },
   { label: 'Neutral', min: 40, max: 60, color: 'hsl(45, 90%, 50%)' },
   { label: 'Greed', min: 60, max: 75, color: 'hsl(100, 60%, 50%)' },
   { label: 'Extreme Greed', min: 75, max: 100, color: 'hsl(130, 65%, 45%)' },
 ];
 
 function getClassification(v: number): string {
-  if (v <= 25) return 'Extreme Fear';
-  if (v <= 40) return 'Fear';
-  if (v <= 60) return 'Neutral';
-  if (v <= 75) return 'Greed';
+  if (v < 20) return 'Extreme Fear';
+  if (v < 40) return 'Fear';
+  if (v < 60) return 'Neutral';
+  if (v < 75) return 'Greed';
   return 'Extreme Greed';
 }
 
@@ -127,9 +128,10 @@ export function FearGreedGauge({
                 {/* Gradient for the arc */}
                 <linearGradient id="fg-arc-gradient" x1="0" y1="0.5" x2="1" y2="0.5">
                   <stop offset="0%" stopColor="hsl(0, 72%, 51%)" />
-                  <stop offset="25%" stopColor="hsl(28, 90%, 55%)" />
-                  <stop offset="50%" stopColor="hsl(45, 90%, 50%)" />
-                  <stop offset="75%" stopColor="hsl(100, 60%, 50%)" />
+                  <stop offset="20%" stopColor="hsl(28, 90%, 55%)" />
+                  <stop offset="40%" stopColor="hsl(45, 90%, 50%)" />
+                  <stop offset="60%" stopColor="hsl(100, 60%, 50%)" />
+                  <stop offset="75%" stopColor="hsl(130, 65%, 45%)" />
                   <stop offset="100%" stopColor="hsl(130, 65%, 45%)" />
                 </linearGradient>
                 {/* Glow filter */}
@@ -153,7 +155,7 @@ export function FearGreedGauge({
               />
 
               {/* Subtle segment lines */}
-              {[25, 40, 60, 75].map((pct) => {
+              {[20, 40, 60, 75].map((pct) => {
                 const angle = -180 + (pct / 100) * 180;
                 const rad = (angle * Math.PI) / 180;
                 return (
@@ -272,7 +274,7 @@ export function FearGreedGauge({
                         color: 'hsl(210, 20%, 92%)',
                       }}
                       labelFormatter={(d: string) => new Date(d).toLocaleDateString()}
-                      formatter={(v: number) => [v, 'Fear & Greed']}
+                      formatter={(v: number) => [`${v} — ${getClassification(v)}`, 'Fear & Greed']}
                     />
                     <Area
                       type="monotone"

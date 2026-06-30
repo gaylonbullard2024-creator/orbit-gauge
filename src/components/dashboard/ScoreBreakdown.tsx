@@ -28,10 +28,10 @@ function scoreBarColor(score: number | null): string {
 
 function fgInterpretation(value: number | null): string {
   if (value == null) return '—';
-  if (value <= 25) return 'Extreme Fear — contrarian bullish';
-  if (value <= 40) return 'Fear — favorable accumulation';
-  if (value <= 60) return 'Neutral sentiment';
-  if (value <= 75) return 'Greed — caution rising';
+  if (value < 20) return 'Extreme Fear — contrarian bullish';
+  if (value < 40) return 'Fear — favorable accumulation';
+  if (value < 60) return 'Neutral sentiment';
+  if (value < 75) return 'Greed — caution rising';
   return 'Extreme Greed — distribution risk';
 }
 

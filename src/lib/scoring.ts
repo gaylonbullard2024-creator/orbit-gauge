@@ -22,12 +22,22 @@ export const PILLAR_WEIGHTS = {
   fearGreed: 0.20,
 } as const;
 
+// Official alternative.me bands: 0–20 Extreme Fear · 20–40 Fear · 40–60 Neutral · 60–75 Greed · 75–100 Extreme Greed
 export function scoreFearGreed(value: number): number {
-  if (value <= 20) return 0;   // Extreme Fear
-  if (value <= 40) return 1;   // Fear
-  if (value <= 55) return 2;   // Neutral
-  if (value <= 70) return 3;   // Greed
+  if (value < 20) return 0;    // Extreme Fear
+  if (value < 40) return 1;    // Fear
+  if (value < 60) return 2;    // Neutral
+  if (value < 75) return 3;    // Greed
   return 4;                    // Extreme Greed
+}
+
+export function fearGreedLabel(value: number | null | undefined): string {
+  if (value == null) return '—';
+  if (value < 20) return 'Extreme Fear';
+  if (value < 40) return 'Fear';
+  if (value < 60) return 'Neutral';
+  if (value < 75) return 'Greed';
+  return 'Extreme Greed';
 }
 
 // MVRV thresholds tuned against 2013→2025 cycle history.
@@ -275,11 +285,7 @@ export function generateChangeDescriptions(
 }
 
 function getFgClass(value: number): string {
-  if (value <= 25) return 'Extreme Fear';
-  if (value <= 40) return 'Fear';
-  if (value <= 60) return 'Neutral';
-  if (value <= 75) return 'Greed';
-  return 'Extreme Greed';
+  return fearGreedLabel(value);
 }
 
 function getMacroRegime(score: number): string {
