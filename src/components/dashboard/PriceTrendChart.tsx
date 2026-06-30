@@ -3,6 +3,7 @@ import {
   Area,
   ComposedChart,
   Line,
+  ReferenceDot,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -46,6 +47,16 @@ export function PriceTrendChart({ priceHistory, maHistory }: PriceTrendChartProp
       price: p.value,
       ma200w: maMap.get(p.date) ?? null,
     }));
+
+  // ATH within the visible window — flagged so the client can verify $124k+ Oct 2025
+  const ath = useMemo(
+    () =>
+      merged.reduce(
+        (a, b) => (b.price > a.price ? b : a),
+        merged[0] ?? { date: '', price: 0, ma200w: null },
+      ),
+    [merged],
+  );
 
   return (
     <Card className="border-border/50 bg-card/80">
@@ -156,8 +167,32 @@ export function PriceTrendChart({ priceHistory, maHistory }: PriceTrendChartProp
               activeDot={{ r: 3, fill: 'hsl(45, 90%, 55%)' }}
               connectNulls
             />
+            {ath.date && (
+              <ReferenceDot
+                x={ath.date}
+                y={ath.price}
+                r={5}
+                fill="hsl(45, 90%, 55%)"
+                stroke="hsl(220, 14%, 11%)"
+                strokeWidth={2}
+                label={{
+                  value: `ATH $${Math.round(ath.price).toLocaleString()}`,
+                  position: 'top',
+                  fill: 'hsl(45, 90%, 65%)',
+                  fontSize: 10,
+                  fontWeight: 600,
+                }}
+                ifOverflow="extendDomain"
+              />
+            )}
           </ComposedChart>
         </ResponsiveContainer>
+        {ath.date && (
+          <p className="mt-2 text-[10px] text-muted-foreground">
+            ATH in window: <span className="text-foreground font-medium">${Math.round(ath.price).toLocaleString()}</span> on{' '}
+            {new Date(ath.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} (daily close, Coin Metrics). Intraday highs from other sources may differ by ~1–2%.
+          </p>
+        )}
       </CardContent>
     </Card>
   );
