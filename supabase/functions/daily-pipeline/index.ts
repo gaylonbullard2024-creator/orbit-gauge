@@ -224,10 +224,9 @@ Deno.serve(async (req) => {
       if (v < 95) return 0; if (v < 100) return 1; if (v < 105) return 2; if (v < 110) return 3; return 4;
     }
 
-    // 6b. Coin Metrics — MVRV, Realized Cap, Market Cap, Supply, Issuance (for Puell)
+    // 6b. Coin Metrics free-tier — MVRV, Supply, Issuance USD.
+    // CapRealUSD / CapMrktCurUSD are paid; we derive Realized Price + NUPL from MVRV.
     let mvrvValue: number | null = null;
-    let realizedCap: number | null = null;
-    let marketCap: number | null = null;
     let supply: number | null = null;
     let issuanceUsd: number | null = null;
     let issuanceMa365: number | null = null;
@@ -237,29 +236,23 @@ Deno.serve(async (req) => {
       const startStr = startBack.toISOString().slice(0, 10);
       const cmRes = await fetch(
         "https://community-api.coinmetrics.io/v4/timeseries/asset-metrics" +
-        "?assets=btc&metrics=CapMVRVCur,CapRealUSD,CapMrktCurUSD,SplyCur,IssTotUSD" +
+        "?assets=btc&metrics=CapMVRVCur,SplyCur,IssTotUSD" +
         `&frequency=1d&page_size=10000&start_time=${startStr}&end_time=${encodeURIComponent(today + "T23:59:59Z")}`
       );
       if (cmRes.ok) {
         const cmJ: any = await cmRes.json();
         const rows = (cmJ.data ?? []) as any[];
-        // latest non-null per metric
         for (let i = rows.length - 1; i >= 0; i--) {
           const r = rows[i];
           if (mvrvValue == null && r.CapMVRVCur != null) mvrvValue = Number(r.CapMVRVCur);
-          if (realizedCap == null && r.CapRealUSD != null) realizedCap = Number(r.CapRealUSD);
-          if (marketCap == null && r.CapMrktCurUSD != null) marketCap = Number(r.CapMrktCurUSD);
           if (supply == null && r.SplyCur != null) supply = Number(r.SplyCur);
           if (issuanceUsd == null && r.IssTotUSD != null) issuanceUsd = Number(r.IssTotUSD);
-          if (mvrvValue && realizedCap && marketCap && supply && issuanceUsd) break;
+          if (mvrvValue && supply && issuanceUsd) break;
         }
-        // 365-day issuance MA
         const issSeries = rows.map((r) => r.IssTotUSD).filter((v) => v != null).map(Number);
         const tail = issSeries.slice(-365);
-        if (tail.length >= 30) {
-          issuanceMa365 = tail.reduce((s, v) => s + v, 0) / tail.length;
-        }
-        console.log("Coin Metrics latest: MVRV", mvrvValue, "RealCap", realizedCap, "Iss", issuanceUsd, "IssMA", issuanceMa365);
+        if (tail.length >= 30) issuanceMa365 = tail.reduce((s, v) => s + v, 0) / tail.length;
+        console.log("Coin Metrics: MVRV", mvrvValue, "Iss", issuanceUsd, "IssMA", issuanceMa365);
         if (mvrvValue != null) {
           await supabase.from("onchain_metrics_daily").upsert(
             [{ date: today, metric_name: "mvrv", value: mvrvValue, source: "coinmetrics" }] as any,
@@ -273,15 +266,13 @@ Deno.serve(async (req) => {
       console.warn("Coin Metrics error:", (e as Error).message);
     }
 
-    const realizedPrice = realizedCap != null && supply != null && supply > 0
-      ? realizedCap / supply : null;
-    const nuplValue = realizedCap != null && marketCap != null && marketCap > 0
-      ? (marketCap - realizedCap) / marketCap : null;
+    const realizedPrice = mvrvValue != null && mvrvValue > 0 ? latestPrice / mvrvValue : null;
+    const nuplValue = mvrvValue != null && mvrvValue > 0 ? 1 - 1 / mvrvValue : null;
     const puellValue = issuanceUsd != null && issuanceMa365 != null && issuanceMa365 > 0
       ? issuanceUsd / issuanceMa365 : null;
-    const reserveRiskValue = mvrvValue != null && realizedPrice != null && mvrvValue > 0 && realizedPrice > 0
-      ? latestPrice / (mvrvValue * realizedPrice) : null;
+    const reserveRiskValue: number | null = null; // requires coin-days (paid feed)
     const soprValue: number | null = null;
+
 
     const fgScore = scoreFG(fgValue);
     const maScore = scoreMA(latestPrice, ma200w);

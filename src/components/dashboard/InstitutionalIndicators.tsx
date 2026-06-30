@@ -84,7 +84,7 @@ const INDICATORS: IndicatorDef[] = [
     key: 'realized_price', name: 'Realized Price',
     description: 'On-chain cost basis of all BTC supply',
     fmt: (v) => `$${v.toLocaleString(undefined, { maximumFractionDigits: 0 })}`,
-    interpret: () => 'Neutral',  // contextual — see card body
+    interpret: () => 'Neutral',
   },
   {
     key: 'nupl', name: 'NUPL',
@@ -94,11 +94,12 @@ const INDICATORS: IndicatorDef[] = [
   },
   {
     key: 'reserve_risk', name: 'Reserve Risk',
-    description: 'LTH conviction vs price (proxy)',
+    description: 'Long-term holder conviction vs price',
     fmt: (v) => v.toFixed(4),
     interpret: (v) => (v < 0.005 ? 'Bullish' : v < 0.02 ? 'Neutral' : 'Bearish'),
+    awaiting: true, paidNote: 'Requires Glassnode',
   },
-];
+
 
 async function fetchInstitutional(): Promise<Row[]> {
   const since = new Date();
