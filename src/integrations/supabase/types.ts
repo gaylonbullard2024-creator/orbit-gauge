@@ -54,12 +54,16 @@ export type Database = {
           date: string
           fear_greed_score: number | null
           fear_greed_value: number | null
+          lth_sopr_score: number | null
+          lth_sopr_value: number | null
           ma_200w_score: number | null
           ma_200w_value: number | null
           macro_score: number | null
           macro_value: number | null
           mvrv_score: number | null
           mvrv_value: number | null
+          puell_score: number | null
+          puell_value: number | null
           rainbow_band: string | null
           rainbow_score: number | null
           strategy_signal: string | null
@@ -74,12 +78,16 @@ export type Database = {
           date: string
           fear_greed_score?: number | null
           fear_greed_value?: number | null
+          lth_sopr_score?: number | null
+          lth_sopr_value?: number | null
           ma_200w_score?: number | null
           ma_200w_value?: number | null
           macro_score?: number | null
           macro_value?: number | null
           mvrv_score?: number | null
           mvrv_value?: number | null
+          puell_score?: number | null
+          puell_value?: number | null
           rainbow_band?: string | null
           rainbow_score?: number | null
           strategy_signal?: string | null
@@ -94,12 +102,16 @@ export type Database = {
           date?: string
           fear_greed_score?: number | null
           fear_greed_value?: number | null
+          lth_sopr_score?: number | null
+          lth_sopr_value?: number | null
           ma_200w_score?: number | null
           ma_200w_value?: number | null
           macro_score?: number | null
           macro_value?: number | null
           mvrv_score?: number | null
           mvrv_value?: number | null
+          puell_score?: number | null
+          puell_value?: number | null
           rainbow_band?: string | null
           rainbow_score?: number | null
           strategy_signal?: string | null
