@@ -36,17 +36,17 @@ export function PriceTrendChart({ priceHistory, maHistory }: PriceTrendChartProp
     return d.toISOString().slice(0, 10);
   }, [range]);
 
-  if (!priceHistory.length) return null;
-
   // Merge price + MA data by date, filtered by range
-  const maMap = new Map(maHistory.map((p) => [p.date, p.value]));
-  const merged = priceHistory
-    .filter((p) => !cutoffDate || p.date >= cutoffDate)
-    .map((p) => ({
-      date: p.date,
-      price: p.value,
-      ma200w: maMap.get(p.date) ?? null,
-    }));
+  const merged = useMemo(() => {
+    const maMap = new Map(maHistory.map((p) => [p.date, p.value]));
+    return priceHistory
+      .filter((p) => !cutoffDate || p.date >= cutoffDate)
+      .map((p) => ({
+        date: p.date,
+        price: p.value,
+        ma200w: maMap.get(p.date) ?? null,
+      }));
+  }, [priceHistory, maHistory, cutoffDate]);
 
   // ATH within the visible window — flagged so the client can verify $124k+ Oct 2025
   const ath = useMemo(
@@ -57,6 +57,9 @@ export function PriceTrendChart({ priceHistory, maHistory }: PriceTrendChartProp
       ),
     [merged],
   );
+
+  if (!priceHistory.length) return null;
+
 
   return (
     <Card className="border-border/50 bg-card/80">
