@@ -141,18 +141,20 @@ const STRATEGIES: Record<string, string> = {
   "Cycle Top Risk": "Extreme caution. Consider trimming positions or hedging.",
 };
 
-// ---------- Coin Metrics fetch (multi-metric, paginated) ----------
+// ---------- Coin Metrics fetch (multi-metric, paginated, free tier only) ----------
+// Free metrics confirmed: CapMVRVCur, SplyCur, IssTotUSD.
+// CapRealUSD / CapMrktCurUSD are paid; we derive Realized Price and NUPL from MVRV instead:
+//   realized_price = price / MVRV
+//   NUPL           = 1 - 1/MVRV
 type CmRow = {
   mvrv: number | null;
-  realizedCap: number | null;
-  marketCap: number | null;
   supply: number | null;
   issuanceUsd: number | null;
 };
 
 async function fetchCoinMetrics(start: string): Promise<Map<string, CmRow>> {
   const out = new Map<string, CmRow>();
-  const metrics = "CapMVRVCur,CapRealUSD,CapMrktCurUSD,SplyCur,IssTotUSD";
+  const metrics = "CapMVRVCur,SplyCur,IssTotUSD";
   let url: string | null =
     `https://community-api.coinmetrics.io/v4/timeseries/asset-metrics?assets=btc&metrics=${metrics}&start_time=${start}&frequency=1d&page_size=10000`;
   while (url) {
@@ -166,8 +168,6 @@ async function fetchCoinMetrics(start: string): Promise<Map<string, CmRow>> {
       const d = String(row.time).slice(0, 10);
       out.set(d, {
         mvrv: row.CapMVRVCur != null ? Number(row.CapMVRVCur) : null,
-        realizedCap: row.CapRealUSD != null ? Number(row.CapRealUSD) : null,
-        marketCap: row.CapMrktCurUSD != null ? Number(row.CapMrktCurUSD) : null,
         supply: row.SplyCur != null ? Number(row.SplyCur) : null,
         issuanceUsd: row.IssTotUSD != null ? Number(row.IssTotUSD) : null,
       });
@@ -177,6 +177,7 @@ async function fetchCoinMetrics(start: string): Promise<Map<string, CmRow>> {
   console.log("Coin Metrics rows:", out.size);
   return out;
 }
+
 
 async function fetchFearGreed(): Promise<Map<string, number>> {
   const out = new Map<string, number>();
