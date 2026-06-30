@@ -99,10 +99,11 @@ const STRATEGIES: Record<string, string> = {
 };
 
 // ---------- Coin Metrics pull (paginated) ----------
+// Only metrics free on the community API: CapMVRVCur. Puell + SOPR require paid credentials.
 async function fetchCoinMetrics(start: string): Promise<Map<string, { mvrv: number | null; puell: number | null; sopr: number | null }>> {
   const out = new Map<string, { mvrv: number | null; puell: number | null; sopr: number | null }>();
   let url: string | null =
-    `https://community-api.coinmetrics.io/v4/timeseries/asset-metrics?assets=btc&metrics=CapMVRVCur,PuellMultiple,SOPR&start_time=${start}&frequency=1d&page_size=10000`;
+    `https://community-api.coinmetrics.io/v4/timeseries/asset-metrics?assets=btc&metrics=CapMVRVCur&start_time=${start}&frequency=1d&page_size=10000`;
   while (url) {
     const res: Response = await fetch(url);
     if (!res.ok) {
@@ -114,8 +115,8 @@ async function fetchCoinMetrics(start: string): Promise<Map<string, { mvrv: numb
       const d = String(row.time).slice(0, 10);
       out.set(d, {
         mvrv: row.CapMVRVCur != null ? Number(row.CapMVRVCur) : null,
-        puell: row.PuellMultiple != null ? Number(row.PuellMultiple) : null,
-        sopr: row.SOPR != null ? Number(row.SOPR) : null,
+        puell: null,
+        sopr: null,
       });
     }
     url = j.next_page_url ?? null;
