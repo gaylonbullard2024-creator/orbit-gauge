@@ -14,27 +14,25 @@ interface MonthPhase {
 
 export function PhaseHistory({ snapshots }: PhaseHistoryProps) {
   const monthlyPhases = useMemo((): MonthPhase[] => {
-    const byMonth = new Map<string, string[]>();
+    // Month-end snapshot: pick the LAST dated snapshot of each calendar month.
+    const lastByMonth = new Map<string, { date: string; phase: string }>();
     for (const s of snapshots) {
       if (!s.cycle_phase) continue;
       const d = new Date(s.date);
       const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-      const arr = byMonth.get(key) ?? [];
-      arr.push(s.cycle_phase);
-      byMonth.set(key, arr);
+      const prev = lastByMonth.get(key);
+      if (!prev || s.date > prev.date) {
+        lastByMonth.set(key, { date: s.date, phase: s.cycle_phase });
+      }
     }
 
-    return Array.from(byMonth.entries())
+    return Array.from(lastByMonth.entries())
       .sort((a, b) => b[0].localeCompare(a[0]))
-      .map(([key, phases]) => {
-        // Most common phase in that month
-        const counts = new Map<string, number>();
-        for (const p of phases) counts.set(p, (counts.get(p) ?? 0) + 1);
-        const dominant = [...counts.entries()].sort((a, b) => b[1] - a[1])[0][0];
+      .map(([key, v]) => {
         const d = new Date(key + '-01');
         return {
           label: d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
-          phase: dominant,
+          phase: v.phase,
         };
       });
   }, [snapshots]);

@@ -1,40 +1,91 @@
+// ============================================================
+// Market Phase Engine v2 — weighted 4-signal model
+// ------------------------------------------------------------
+// Each pillar returns 0..4 ("market temperature" per signal).
+// Pillars are combined with explicit weights summing to 1.0.
+// Weighted score is rescaled to 0..20 for the gauge.
+//
+// Pillars in production (real data only — no fakes):
+//   1. MVRV ............ 30%  (Coin Metrics CapMVRVCur)
+//   2. Trend Strength .. 25%  (price vs 200WMA + 90d slope)
+//   3. 200WMA distance . 25%  (price / 200WMA ratio)
+//   4. Fear & Greed .... 20%  (alternative.me, 2018-02 →)
+//
+// Pillars deferred (require paid feed — UI shows "Feed pending"):
+//   Puell Multiple, LTH-SOPR, Exchange Inflows/Outflows, Volume
+// ============================================================
+
+export const PILLAR_WEIGHTS = {
+  mvrv: 0.30,
+  trend: 0.25,
+  ma200w: 0.25,
+  fearGreed: 0.20,
+} as const;
+
 export function scoreFearGreed(value: number): number {
-  if (value <= 25) return 0;
-  if (value <= 40) return 1;
-  if (value <= 60) return 2;
-  if (value <= 75) return 3;
-  return 4;
+  if (value <= 20) return 0;   // Extreme Fear
+  if (value <= 40) return 1;   // Fear
+  if (value <= 55) return 2;   // Neutral
+  if (value <= 70) return 3;   // Greed
+  return 4;                    // Extreme Greed
 }
 
+// MVRV thresholds tuned against 2013→2025 cycle history.
+// Cycle tops historically print MVRV 2.4-3.7, bottoms < 1.0.
 export function scoreMvrv(value: number): number {
-  if (value < 0) return 0;
-  if (value <= 2) return 1;
-  if (value <= 6) return 2;
-  if (value <= 7) return 3;
-  return 4;
+  if (value < 1.0) return 0;   // Capitulation
+  if (value < 1.5) return 1;   // Deep value
+  if (value < 2.0) return 2;   // Fair value
+  if (value < 2.5) return 3;   // Elevated
+  return 4;                    // Overheated / cycle-top zone
 }
 
 export function scorePriceVs200wMa(price: number, ma: number): number {
   if (price <= ma) return 0;
-  const pct = (price / ma) - 1;
-  if (pct <= 0.25) return 1;
-  if (pct <= 0.75) return 2;
-  if (pct <= 1.5) return 3;
-  return 4;
+  const mult = price / ma;
+  if (mult <= 1.25) return 1;
+  if (mult <= 1.75) return 2;
+  if (mult <= 2.25) return 3;
+  return 4;                    // > 2.25× MA = euphoria
 }
 
+// Trend Strength = distance above MA blended with 90-day price slope.
+// `return90d` = (price / price_90d_ago) - 1; null if history too short.
+export function scoreTrendStrength(
+  price: number,
+  ma: number,
+  return90d: number | null,
+): number {
+  const maMult = price / ma;
+  // Base from MA distance
+  let base: number;
+  if (maMult < 0.85) base = 0;
+  else if (maMult < 1.0) base = 1;
+  else if (maMult < 1.5) base = 2;
+  else if (maMult < 2.0) base = 3;
+  else base = 4;
+
+  if (return90d == null) return base;
+
+  // Adjust by 90d slope
+  let slope: number;
+  if (return90d <= -0.25) slope = -2;
+  else if (return90d <= -0.10) slope = -1;
+  else if (return90d <= 0.10) slope = 0;
+  else if (return90d <= 0.30) slope = 1;
+  else slope = 2;
+
+  return Math.max(0, Math.min(4, base + slope));
+}
+
+// Kept for backward compatibility (no longer in core score).
 export function scoreRainbow(band: string): number {
   const map: Record<string, number> = {
-    'Fire Sale': 0,
-    'Accumulate': 1,
-    'Growth': 2,
-    'Overheated': 3,
-    'Bubble Risk': 4,
+    'Fire Sale': 0, 'Accumulate': 1, 'Growth': 2, 'Overheated': 3, 'Bubble Risk': 4,
   };
   return map[band] ?? 2;
 }
-
-export function scoreMacro(value: number, previousValue?: number): number {
+export function scoreMacro(value: number): number {
   if (value < 95) return 0;
   if (value < 100) return 1;
   if (value < 105) return 2;
@@ -42,15 +93,42 @@ export function scoreMacro(value: number, previousValue?: number): number {
   return 4;
 }
 
-export function mapScoreToPhase(score: number, hasMvrv: boolean): string {
-  const max = hasMvrv ? 20 : 16;
-  const normalized = (score / max) * 20;
-  if (normalized <= 4) return 'Deep Value';
-  if (normalized <= 7) return 'Accumulation';
-  if (normalized <= 10) return 'Bull Market';
-  if (normalized <= 13) return 'Overheated';
+/** Combine the 4 pillar scores (0..4 each) into the 0..20 cycle score. */
+export function computeWeightedCycleScore(parts: {
+  mvrv: number | null;
+  trend: number | null;
+  ma200w: number | null;
+  fearGreed: number | null;
+}): { score: number; coverage: number } {
+  const entries: Array<[keyof typeof PILLAR_WEIGHTS, number | null]> = [
+    ['mvrv', parts.mvrv],
+    ['trend', parts.trend],
+    ['ma200w', parts.ma200w],
+    ['fearGreed', parts.fearGreed],
+  ];
+  let weighted = 0;
+  let usedWeight = 0;
+  for (const [k, v] of entries) {
+    if (v == null) continue;
+    weighted += v * PILLAR_WEIGHTS[k];
+    usedWeight += PILLAR_WEIGHTS[k];
+  }
+  if (usedWeight === 0) return { score: 0, coverage: 0 };
+  // Renormalize to full-weight basis, then scale 0..4 → 0..20
+  const normalized = (weighted / usedWeight) * 5;
+  return { score: Math.round(normalized * 10) / 10, coverage: usedWeight };
+}
+
+/** Map 0..20 score to a phase label. Thresholds tuned to historical anchors. */
+export function mapScoreToPhase(score: number, _hasMvrv = true): string {
+  if (score < 5) return 'Deep Value';
+  if (score < 9) return 'Accumulation';
+  if (score < 13) return 'Bull Trend';
+  if (score < 16) return 'Overheated';
   return 'Cycle Top Risk';
 }
+
+
 
 export function mapPhaseToStrategy(phase: string): string {
   const strategies: Record<string, string> = {

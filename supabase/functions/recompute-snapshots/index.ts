@@ -13,63 +13,63 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// ---------- scoring (kept in-sync with src/lib/scoring.ts) ----------
+// ---------- Market Phase Engine v2 (weighted 4-signal) ----------
+// Kept in-sync with src/lib/scoring.ts. Real data only.
+const WEIGHTS = { mvrv: 0.30, trend: 0.25, ma200w: 0.25, fearGreed: 0.20 } as const;
+
 function scoreFG(v: number | null) {
   if (v == null) return null;
-  if (v <= 25) return 0;
+  if (v <= 20) return 0;
   if (v <= 40) return 1;
-  if (v <= 60) return 2;
-  if (v <= 75) return 3;
+  if (v <= 55) return 2;
+  if (v <= 70) return 3;
   return 4;
 }
-function scoreTrend(price: number, ma: number) {
+function scoreMA(price: number, ma: number) {
   if (price <= ma) return 0;
-  const pct = price / ma - 1;
-  if (pct <= 0.25) return 1;
-  if (pct <= 0.75) return 2;
-  if (pct <= 1.5) return 3;
+  const mult = price / ma;
+  if (mult <= 1.25) return 1;
+  if (mult <= 1.75) return 2;
+  if (mult <= 2.25) return 3;
   return 4;
 }
+function scoreTrendStrength(price: number, ma: number, ret90d: number | null) {
+  const mult = price / ma;
+  let base: number;
+  if (mult < 0.85) base = 0;
+  else if (mult < 1.0) base = 1;
+  else if (mult < 1.5) base = 2;
+  else if (mult < 2.0) base = 3;
+  else base = 4;
+  if (ret90d == null) return base;
+  let slope: number;
+  if (ret90d <= -0.25) slope = -2;
+  else if (ret90d <= -0.10) slope = -1;
+  else if (ret90d <= 0.10) slope = 0;
+  else if (ret90d <= 0.30) slope = 1;
+  else slope = 2;
+  return Math.max(0, Math.min(4, base + slope));
+}
+function scoreMVRV(v: number | null) {
+  if (v == null) return null;
+  if (v < 1.0) return 0;
+  if (v < 1.5) return 1;
+  if (v < 2.0) return 2;
+  if (v < 2.5) return 3;
+  return 4;
+}
+// Informational only (no longer in core score) — kept for the legacy columns
 function scoreRB(band: string) {
-  const m: Record<string, number> = {
-    "Fire Sale": 0, "Accumulate": 1, "Growth": 2, "Overheated": 3, "Bubble Risk": 4,
-  };
+  const m: Record<string, number> = { "Fire Sale": 0, "Accumulate": 1, "Growth": 2, "Overheated": 3, "Bubble Risk": 4 };
   return m[band] ?? 2;
 }
 function scoreMacro(v: number | null) {
   if (v == null) return 2;
-  if (v < 95) return 0;
-  if (v < 100) return 1;
-  if (v < 105) return 2;
-  if (v < 110) return 3;
-  return 4;
+  if (v < 95) return 0; if (v < 100) return 1; if (v < 105) return 2; if (v < 110) return 3; return 4;
 }
-// Real MVRV scoring (industry-standard bands)
-function scoreMVRV(v: number | null) {
-  if (v == null) return null;
-  if (v < 1) return 0;        // deep value
-  if (v < 2) return 1;        // accumulate
-  if (v < 3) return 2;        // fair
-  if (v < 3.7) return 3;      // overheated
-  return 4;                    // top risk
-}
-// Puell Multiple scoring
-function scorePuell(v: number | null) {
-  if (v == null) return null;
-  if (v < 0.5) return 0;      // miner capitulation, bottom
-  if (v < 1.0) return 1;
-  if (v < 2.0) return 2;
-  if (v < 4.0) return 3;
-  return 4;                    // historic top
-}
-function scoreSOPR(v: number | null) {
-  if (v == null) return null;
-  if (v < 0.95) return 0;
-  if (v < 1.0) return 1;
-  if (v < 1.02) return 2;
-  if (v < 1.05) return 3;
-  return 4;
-}
+function scorePuell(v: number | null) { if (v == null) return null; if (v < 0.5) return 0; if (v < 1) return 1; if (v < 2) return 2; if (v < 4) return 3; return 4; }
+function scoreSOPR(v: number | null)  { if (v == null) return null; if (v < 0.95) return 0; if (v < 1) return 1; if (v < 1.02) return 2; if (v < 1.05) return 3; return 4; }
+
 function rainbowBandFor(price: number, dateMs: number): string {
   const daysSinceGenesis = Math.floor((dateMs - new Date("2009-01-03").getTime()) / 86400000);
   const logPrice = Math.log10(price);
@@ -81,15 +81,26 @@ function rainbowBandFor(price: number, dateMs: number): string {
   if (dev < 0.5) return "Overheated";
   return "Bubble Risk";
 }
-function mapPhase(total: number, hasMvrv: boolean): string {
-  const max = hasMvrv ? 20 : 16;
-  const norm = (total / max) * 20;
-  if (norm <= 5) return "Deep Value";
-  if (norm <= 9) return "Accumulation";
-  if (norm <= 13) return "Bull Trend";
-  if (norm <= 17) return "Overheated";
+
+function combineWeighted(parts: { mvrv: number|null; trend: number|null; ma200w: number|null; fearGreed: number|null }) {
+  let w = 0, sum = 0;
+  if (parts.mvrv      != null) { sum += parts.mvrv      * WEIGHTS.mvrv;      w += WEIGHTS.mvrv;      }
+  if (parts.trend     != null) { sum += parts.trend     * WEIGHTS.trend;     w += WEIGHTS.trend;     }
+  if (parts.ma200w    != null) { sum += parts.ma200w    * WEIGHTS.ma200w;    w += WEIGHTS.ma200w;    }
+  if (parts.fearGreed != null) { sum += parts.fearGreed * WEIGHTS.fearGreed; w += WEIGHTS.fearGreed; }
+  if (w === 0) return { score: 0, coverage: 0 };
+  const normalized = (sum / w) * 5;  // 0..4 → 0..20
+  return { score: Math.round(normalized), coverage: w };  // int 0..20 for storage
+}
+
+function mapPhase(score: number): string {
+  if (score < 5) return "Deep Value";
+  if (score < 9) return "Accumulation";
+  if (score < 13) return "Bull Trend";
+  if (score < 16) return "Overheated";
   return "Cycle Top Risk";
 }
+
 const STRATEGIES: Record<string, string> = {
   "Deep Value": "Strong accumulation zone. Historically the best time to build positions.",
   "Accumulation": "Gradually accumulate Bitcoin. Add on pullbacks.",
@@ -228,14 +239,30 @@ Deno.serve(async (req) => {
       batch.length = 0;
     };
 
+    // Index prices by date for 90d-return lookup
+    const priceByDate = new Map<string, number>();
+    for (const p of prices) priceByDate.set(p.date, p.close);
+    function priceNDaysAgo(date: string, n: number): number | null {
+      const d = new Date(date + "T00:00:00Z");
+      d.setUTCDate(d.getUTCDate() - n);
+      const key = d.toISOString().slice(0, 10);
+      // walk back up to 7 days if exact match missing (weekend gaps not relevant for BTC but safe)
+      for (let i = 0; i < 7; i++) {
+        const dt = new Date(d);
+        dt.setUTCDate(dt.getUTCDate() - i);
+        const k = dt.toISOString().slice(0, 10);
+        const v = priceByDate.get(k);
+        if (v != null) return v;
+      }
+      return null;
+    }
+
     for (const p of prices) {
       // 200W MA: mean of last 200 weekly closes whose week_start <= this date
       const wIdx = (() => {
-        // find last weekStart <= p.date
         const ws = weekStart(p.date);
         let i = weeklyIndex.get(ws);
         if (i == null) {
-          // binary search fallback
           let lo = 0, hi = weekly.length - 1, best = -1;
           while (lo <= hi) {
             const mid = (lo + hi) >> 1;
@@ -248,7 +275,7 @@ Deno.serve(async (req) => {
       if (wIdx == null || wIdx < 0) continue;
       const start = Math.max(0, wIdx - 199);
       const slice = weekly.slice(start, wIdx + 1);
-      if (slice.length < 50) continue; // not enough history to be meaningful
+      if (slice.length < 50) continue;
       const ma200w = slice.reduce((s, w) => s + w.close, 0) / slice.length;
 
       const cmRow = cm.get(p.date);
@@ -259,23 +286,27 @@ Deno.serve(async (req) => {
       const fgValue = fg.get(p.date) ?? null;
       const dxy = dxyAt(p.date);
 
+      // 90-day price return for trend slope
+      const p90 = priceNDaysAgo(p.date, 90);
+      const ret90d = p90 != null && p90 > 0 ? (p.close / p90) - 1 : null;
+
       const band = rainbowBandFor(p.close, new Date(p.date + "T00:00:00Z").getTime());
       const fgScore = scoreFG(fgValue);
-      const maScore = scoreTrend(p.close, ma200w);
+      const maScore = scoreMA(p.close, ma200w);
+      const trendScore = scoreTrendStrength(p.close, ma200w, ret90d);
       const rbScore = scoreRB(band);
       const macroScore = scoreMacro(dxy);
       const mvrvScore = scoreMVRV(mvrvValue);
       const puellScore = scorePuell(puellValue);
       const soprScore = scoreSOPR(soprValue);
 
-      const hasMvrv = mvrvScore != null;
-      const total =
-        (fgScore ?? 2) +
-        maScore +
-        rbScore +
-        macroScore +
-        (hasMvrv ? (mvrvScore as number) : 0);
-      const phase = mapPhase(total, hasMvrv);
+      const { score: weightedScore } = combineWeighted({
+        mvrv: mvrvScore,
+        trend: trendScore,
+        ma200w: maScore,
+        fearGreed: fgScore,
+      });
+      const phase = mapPhase(weightedScore);
 
       batch.push({
         date: p.date,
@@ -294,13 +325,14 @@ Deno.serve(async (req) => {
         puell_score: puellScore,
         lth_sopr_value: soprValue,
         lth_sopr_score: soprScore,
-        cycle_total_score: total,
+        cycle_total_score: weightedScore,
         cycle_phase: phase,
         strategy_signal: STRATEGIES[phase],
       });
       if (batch.length >= 500) await flush();
     }
     await flush();
+
 
     // 6. Validation: print anchor dates
     const anchors = ["2017-12-17", "2018-12-15", "2021-04-14", "2021-11-10", "2022-11-21", "2025-10-07"];
