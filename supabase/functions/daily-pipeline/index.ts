@@ -243,10 +243,15 @@ Deno.serve(async (req) => {
           if (mvrvValue != null && puellValue != null && soprValue != null) break;
         }
         console.log("Coin Metrics latest:", { mvrvValue, puellValue, soprValue });
-        // persist onchain_metrics_daily
-        await supabase.from("onchain_metrics_daily").upsert({
-          date: today, mvrv: mvrvValue, puell: puellValue, sopr: soprValue, source: "coinmetrics",
-        } as any, { onConflict: "date" });
+        // persist onchain_metrics_daily (long format)
+        const onchainRows = [
+          { date: today, metric_name: "mvrv", value: mvrvValue, source: "coinmetrics" },
+          { date: today, metric_name: "puell", value: puellValue, source: "coinmetrics" },
+          { date: today, metric_name: "sopr", value: soprValue, source: "coinmetrics" },
+        ].filter((r) => r.value != null);
+        if (onchainRows.length) {
+          await supabase.from("onchain_metrics_daily").upsert(onchainRows as any, { onConflict: "date,metric_name" });
+        }
       } else {
         console.warn("Coin Metrics fetch failed:", cmRes.status, await cmRes.text());
       }
