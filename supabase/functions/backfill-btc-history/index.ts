@@ -17,40 +17,28 @@ Deno.serve(async (req) => {
   );
 
   try {
-    const cgApiKey = Deno.env.get("COINGECKO_API_KEY");
-    const headers: Record<string, string> = { Accept: "application/json" };
-    if (cgApiKey) headers["x-cg-demo-api-key"] = cgApiKey;
-
-    const url =
-      "https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=usd&days=max&interval=daily";
-    const res = await fetch(url, { headers });
-    if (!res.ok) {
-      const t = await res.text();
-      throw new Error(`CoinGecko ${res.status}: ${t}`);
+    // Coin Metrics community API has full BTC history (PriceUSD, CapMrktCurUSD, VolumeUSD24h) since 2010, free.
+    const rows: { date: string; close_usd: number; market_cap_usd: number | null; volume_usd: number | null; source: string }[] = [];
+    let url: string | null =
+      "https://community-api.coinmetrics.io/v4/timeseries/asset-metrics?assets=btc&metrics=PriceUSD,CapMrktCurUSD,VolumeUSD24h&start_time=2013-01-01&frequency=1d&page_size=10000";
+    while (url) {
+      const r: Response = await fetch(url);
+      if (!r.ok) throw new Error(`Coin Metrics ${r.status}: ${await r.text()}`);
+      const j: any = await r.json();
+      for (const row of (j.data ?? [])) {
+        const date = String(row.time).slice(0, 10);
+        if (row.PriceUSD == null) continue;
+        rows.push({
+          date,
+          close_usd: Number(row.PriceUSD),
+          market_cap_usd: row.CapMrktCurUSD != null ? Number(row.CapMrktCurUSD) : null,
+          volume_usd: row.VolumeUSD24h != null ? Number(row.VolumeUSD24h) : null,
+          source: "coinmetrics",
+        });
+      }
+      url = j.next_page_url ?? null;
     }
-    const j = await res.json();
-    const prices: [number, number][] = j.prices ?? [];
-    const mcaps: [number, number][] = j.market_caps ?? [];
-    const vols: [number, number][] = j.total_volumes ?? [];
-
-    const byDate = new Map<string, { close: number; mcap: number | null; vol: number | null }>();
-    for (let i = 0; i < prices.length; i++) {
-      const d = new Date(prices[i][0]).toISOString().slice(0, 10);
-      byDate.set(d, {
-        close: prices[i][1],
-        mcap: mcaps[i]?.[1] ?? null,
-        vol: vols[i]?.[1] ?? null,
-      });
-    }
-    const rows = Array.from(byDate.entries())
-      .sort(([a], [b]) => a.localeCompare(b))
-      .map(([date, v]) => ({
-        date,
-        close_usd: v.close,
-        market_cap_usd: v.mcap,
-        volume_usd: v.vol,
-        source: "coingecko",
-      }));
+    rows.sort((a, b) => a.date.localeCompare(b.date));
 
     let written = 0;
     for (let i = 0; i < rows.length; i += 500) {
