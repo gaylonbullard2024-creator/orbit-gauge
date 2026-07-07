@@ -172,6 +172,13 @@ export default function Dashboard() {
           mvrvHistory={mvrvHistory}
         />
 
+        {/* Real-time BTC/USD TradingView chart — placed under Fear & Greed / Core Indicators */}
+        <section>
+          <Suspense fallback={<ChartFallback />}>
+            <TradingViewChart />
+          </Suspense>
+        </section>
+
         {/* Cycle Score Timeline */}
         {snapHistory && snapHistory.length > 1 && (
           <section>
@@ -198,12 +205,6 @@ export default function Dashboard() {
           </Suspense>
         </section>
 
-        {/* Real-time BTC/USD TradingView chart */}
-        <section>
-          <Suspense fallback={<ChartFallback />}>
-            <TradingViewChart />
-          </Suspense>
-        </section>
 
         {!isLoading && snapshot && prevSnapshot && (
           <section>

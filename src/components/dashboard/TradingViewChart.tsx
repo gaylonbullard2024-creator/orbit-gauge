@@ -67,9 +67,9 @@ export function TradingViewChart() {
       <CardContent>
         <div
           ref={containerRef}
-          className="tradingview-widget-container"
-          style={{ height: 520, width: '100%' }}
+          className="tradingview-widget-container w-full h-[560px] sm:h-[640px] lg:h-[720px]"
         />
+
       </CardContent>
     </Card>
   );
