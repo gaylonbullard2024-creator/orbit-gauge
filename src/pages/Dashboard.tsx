@@ -198,12 +198,13 @@ export default function Dashboard() {
           </Suspense>
         </section>
 
-        {/* Power Law Backtest */}
+        {/* Real-time BTC/USD TradingView chart */}
         <section>
           <Suspense fallback={<ChartFallback />}>
-            <PowerLawBacktest priceHistory={btcFullHistory ?? btcHistory ?? []} />
+            <TradingViewChart />
           </Suspense>
         </section>
+
         {!isLoading && snapshot && prevSnapshot && (
           <section>
             <WeeklyChanges snapshot={snapshot} previousSnapshot={prevSnapshot} />
@@ -228,21 +229,7 @@ export default function Dashboard() {
           </section>
         )}
 
-        {/* Historical Cycle Validation */}
-        <section>
-          <Suspense fallback={<ChartFallback />}>
-            <CycleValidation latest={snapshot} />
-          </Suspense>
-        </section>
 
-
-
-        {/* Data Integrity Validator */}
-        <section>
-          <Suspense fallback={<ChartFallback />}>
-            <DataIntegrityPanel />
-          </Suspense>
-        </section>
 
         {/* Weekly Commentary */}
         <section>
