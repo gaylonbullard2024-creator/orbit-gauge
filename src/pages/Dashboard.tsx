@@ -36,9 +36,6 @@ const PowerLawChart = lazy(() =>
 const PhaseHistory = lazy(() =>
   import('@/components/dashboard/PhaseHistory').then((m) => ({ default: m.PhaseHistory }))
 );
-const InstitutionalIndicators = lazy(() =>
-  import('@/components/dashboard/InstitutionalIndicators').then((m) => ({ default: m.InstitutionalIndicators }))
-);
 const TradingViewChart = lazy(() =>
   import('@/components/dashboard/TradingViewChart').then((m) => ({ default: m.TradingViewChart }))
 );
