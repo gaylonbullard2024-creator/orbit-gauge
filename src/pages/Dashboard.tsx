@@ -33,20 +33,14 @@ const CycleTimeline = lazy(() =>
 const PowerLawChart = lazy(() =>
   import('@/components/dashboard/PowerLawChart').then((m) => ({ default: m.PowerLawChart }))
 );
-const PowerLawBacktest = lazy(() =>
-  import('@/components/dashboard/PowerLawBacktest').then((m) => ({ default: m.PowerLawBacktest }))
-);
 const PhaseHistory = lazy(() =>
   import('@/components/dashboard/PhaseHistory').then((m) => ({ default: m.PhaseHistory }))
-);
-const CycleValidation = lazy(() =>
-  import('@/components/dashboard/CycleValidation').then((m) => ({ default: m.CycleValidation }))
 );
 const InstitutionalIndicators = lazy(() =>
   import('@/components/dashboard/InstitutionalIndicators').then((m) => ({ default: m.InstitutionalIndicators }))
 );
-const DataIntegrityPanel = lazy(() =>
-  import('@/components/dashboard/DataIntegrityPanel').then((m) => ({ default: m.DataIntegrityPanel }))
+const TradingViewChart = lazy(() =>
+  import('@/components/dashboard/TradingViewChart').then((m) => ({ default: m.TradingViewChart }))
 );
 
 
@@ -204,12 +198,13 @@ export default function Dashboard() {
           </Suspense>
         </section>
 
-        {/* Power Law Backtest */}
+        {/* Real-time BTC/USD TradingView chart */}
         <section>
           <Suspense fallback={<ChartFallback />}>
-            <PowerLawBacktest priceHistory={btcFullHistory ?? btcHistory ?? []} />
+            <TradingViewChart />
           </Suspense>
         </section>
+
         {!isLoading && snapshot && prevSnapshot && (
           <section>
             <WeeklyChanges snapshot={snapshot} previousSnapshot={prevSnapshot} />
@@ -234,21 +229,7 @@ export default function Dashboard() {
           </section>
         )}
 
-        {/* Historical Cycle Validation */}
-        <section>
-          <Suspense fallback={<ChartFallback />}>
-            <CycleValidation latest={snapshot} />
-          </Suspense>
-        </section>
 
-
-
-        {/* Data Integrity Validator */}
-        <section>
-          <Suspense fallback={<ChartFallback />}>
-            <DataIntegrityPanel />
-          </Suspense>
-        </section>
 
         {/* Weekly Commentary */}
         <section>
