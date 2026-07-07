@@ -33,20 +33,14 @@ const CycleTimeline = lazy(() =>
 const PowerLawChart = lazy(() =>
   import('@/components/dashboard/PowerLawChart').then((m) => ({ default: m.PowerLawChart }))
 );
-const PowerLawBacktest = lazy(() =>
-  import('@/components/dashboard/PowerLawBacktest').then((m) => ({ default: m.PowerLawBacktest }))
-);
 const PhaseHistory = lazy(() =>
   import('@/components/dashboard/PhaseHistory').then((m) => ({ default: m.PhaseHistory }))
-);
-const CycleValidation = lazy(() =>
-  import('@/components/dashboard/CycleValidation').then((m) => ({ default: m.CycleValidation }))
 );
 const InstitutionalIndicators = lazy(() =>
   import('@/components/dashboard/InstitutionalIndicators').then((m) => ({ default: m.InstitutionalIndicators }))
 );
-const DataIntegrityPanel = lazy(() =>
-  import('@/components/dashboard/DataIntegrityPanel').then((m) => ({ default: m.DataIntegrityPanel }))
+const TradingViewChart = lazy(() =>
+  import('@/components/dashboard/TradingViewChart').then((m) => ({ default: m.TradingViewChart }))
 );
 
 
