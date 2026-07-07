@@ -1,18 +1,17 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 
 /**
- * BTC/USD TradingView chart with click-to-load behavior.
- * The TradingView widget is not loaded until the user explicitly clicks
- * the placeholder, avoiding heavy third-party scripts on initial page load.
+ * Real-time BTC/USD trading chart via TradingView embedded widget.
+ * The TradingView script injects an <iframe> that fills the container it is
+ * appended to, so we give that container an explicit pixel height and let the
+ * outer card handle padding + overflow. The side toolbar is hidden to keep the
+ * layout clean and prevent overlapping panels.
  */
 export function TradingViewChart() {
   const hostRef = useRef<HTMLDivElement>(null);
-  const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
-    if (!loaded) return;
     const host = hostRef.current;
     if (!host) return;
     host.innerHTML = '';
@@ -53,7 +52,7 @@ export function TradingViewChart() {
       backgroundColor: 'rgba(15, 15, 18, 1)',
       gridColor: 'rgba(255, 255, 255, 0.06)',
       allow_symbol_change: true,
-      hide_side_toolbar: false,
+      hide_side_toolbar: true,
       hide_top_toolbar: false,
       hide_legend: false,
       hide_volume: false,
@@ -74,7 +73,7 @@ export function TradingViewChart() {
     return () => {
       host.innerHTML = '';
     };
-  }, [loaded]);
+  }, []);
 
   return (
     <Card className="border-border/50 bg-card/80 overflow-hidden">
@@ -89,46 +88,11 @@ export function TradingViewChart() {
       </CardHeader>
       <CardContent className="p-0">
         <div className="relative w-full h-[640px] sm:h-[720px] lg:h-[820px] overflow-hidden">
-          {!loaded ? (
-            <button
-              type="button"
-              onClick={() => setLoaded(true)}
-              className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-card/90 hover:bg-card/70 transition-colors cursor-pointer group"
-            >
-              <div className="rounded-full bg-primary/10 p-4 group-hover:bg-primary/20 transition-colors">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="48"
-                  height="48"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className="text-primary"
-                >
-                  <path d="M3 3v18h18" />
-                  <path d="M7 16l4-4 4 4 6-7" />
-                  <circle cx="21" cy="9" r="1.5" fill="currentColor" />
-                </svg>
-              </div>
-              <div className="text-center space-y-1">
-                <p className="text-base font-medium text-foreground">Load BTC/USD Trading Chart</p>
-                <p className="text-sm text-muted-foreground">
-                  Click to load the live TradingView widget
-                </p>
-              </div>
-              <Button size="sm" className="pointer-events-none">
-                Load Chart
-              </Button>
-            </button>
-          ) : (
-            <div ref={hostRef} className="absolute inset-0" />
-          )}
+          <div ref={hostRef} className="absolute inset-0" />
         </div>
       </CardContent>
     </Card>
   );
 }
+
 
