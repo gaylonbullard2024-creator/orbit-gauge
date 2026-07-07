@@ -36,9 +36,6 @@ const PowerLawChart = lazy(() =>
 const PhaseHistory = lazy(() =>
   import('@/components/dashboard/PhaseHistory').then((m) => ({ default: m.PhaseHistory }))
 );
-const InstitutionalIndicators = lazy(() =>
-  import('@/components/dashboard/InstitutionalIndicators').then((m) => ({ default: m.InstitutionalIndicators }))
-);
 const TradingViewChart = lazy(() =>
   import('@/components/dashboard/TradingViewChart').then((m) => ({ default: m.TradingViewChart }))
 );
@@ -142,13 +139,12 @@ export default function Dashboard() {
           <ScoreBreakdown snapshot={snapshot} totalScore={totalScore} maxScore={maxScore} />
         )}
 
-        {/* Institutional Indicators — 10-signal panel */}
+        {/* BTC/USD Live Trading Chart — big view */}
         <section>
           <Suspense fallback={<ChartFallback />}>
-            <InstitutionalIndicators />
+            <TradingViewChart />
           </Suspense>
         </section>
-
 
         {/* Weekly Summary */}
         {!isLoading && snapshot && (
@@ -172,12 +168,6 @@ export default function Dashboard() {
           mvrvHistory={mvrvHistory}
         />
 
-        {/* Real-time BTC/USD TradingView chart — placed under Fear & Greed / Core Indicators */}
-        <section>
-          <Suspense fallback={<ChartFallback />}>
-            <TradingViewChart />
-          </Suspense>
-        </section>
 
         {/* Cycle Score Timeline */}
         {snapHistory && snapHistory.length > 1 && (

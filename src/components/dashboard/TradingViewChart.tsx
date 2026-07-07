@@ -86,7 +86,7 @@ export function TradingViewChart() {
         </CardTitle>
       </CardHeader>
       <CardContent className="p-0">
-        <div className="relative w-full h-[520px] sm:h-[600px] lg:h-[680px] overflow-hidden">
+        <div className="relative w-full h-[640px] sm:h-[720px] lg:h-[820px] overflow-hidden">
           <div ref={hostRef} className="absolute inset-0" />
         </div>
       </CardContent>
