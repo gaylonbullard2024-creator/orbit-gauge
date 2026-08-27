@@ -263,7 +263,15 @@ export function PowerLawChart({ priceHistory }: PowerLawChartProps) {
                 fontSize: '11px',
                 color: 'hsl(210, 20%, 92%)',
               }}
-              labelFormatter={(d: string) => new Date(d).toLocaleDateString()}
+              labelFormatter={(t: number) =>
+                new Date(t).toLocaleDateString('en-US', {
+                  year: 'numeric',
+                  month: 'short',
+                  day: 'numeric',
+                  timeZone: 'UTC',
+                })
+              }
+
               formatter={(v: unknown, name: string) => {
                 if (!TOOLTIP_LABELS[name]) return [null, null] as unknown as [string, string];
                 const label = TOOLTIP_LABELS[name];
