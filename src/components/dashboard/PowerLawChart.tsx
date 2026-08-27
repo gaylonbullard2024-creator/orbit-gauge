@@ -233,15 +233,17 @@ export function PowerLawChart({ priceHistory }: PowerLawChartProps) {
             />
 
             <XAxis
-              dataKey="date"
+              dataKey="t"
+              type="number"
+              scale="time"
+              domain={xDomain}
+              ticks={xTicks}
               tick={{ fontSize: 10, fill: 'hsl(215, 15%, 55%)' }}
               tickLine={false}
               axisLine={false}
-              tickFormatter={(d: string) =>
-                new Date(d).toLocaleDateString('en-US', { month: 'short', year: '2-digit' })
-              }
-              minTickGap={50}
+              tickFormatter={formatTick}
             />
+
             <YAxis
               tick={{ fontSize: 10, fill: 'hsl(215, 15%, 55%)' }}
               tickLine={false}
