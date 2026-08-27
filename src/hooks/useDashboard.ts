@@ -126,8 +126,10 @@ export function useFullBtcPriceHistory() {
   return useQuery({
     queryKey: ['btc-price-history-full'],
     queryFn: async (): Promise<HistoricalPoint[]> => {
-      // Supabase caps select responses at 1000 rows by default; request larger pages explicitly.
-      const pageSize = 5000;
+      // PostgREST caps responses at 1000 rows regardless of the requested range,
+      // so page in 1000-row chunks and keep going until a short page comes back.
+      const pageSize = 1000;
+
       const all: HistoricalPoint[] = [];
       let from = 0;
       for (;;) {
