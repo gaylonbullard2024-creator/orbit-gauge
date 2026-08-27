@@ -91,6 +91,9 @@ export function PowerLawChart({ priceHistory }: PowerLawChartProps) {
         if (!pl) return null;
         return {
           date: p.date,
+          // Numeric timestamp so the X axis is a true time scale (evenly spaced by
+          // real time, not by row index). Parsed as UTC to avoid tz month shifts.
+          t: Date.parse(`${p.date}T00:00:00Z`),
           price: p.value,
           fair: pl.fair,
           p1: pl.bands.p1,
@@ -107,8 +110,30 @@ export function PowerLawChart({ priceHistory }: PowerLawChartProps) {
           band_up2_up3: [pl.bands.p2, pl.bands.p3],
         };
       })
-      .filter(Boolean) as Array<Record<string, unknown>>;
+      .filter(Boolean) as Array<Record<string, number | string | number[]>>;
   }, [priceHistory, cutoffDate]);
+
+  // Evenly spaced ticks along the real time axis.
+  const { xDomain, xTicks } = useMemo(() => {
+    if (data.length < 2) return { xDomain: [0, 1] as [number, number], xTicks: [] as number[] };
+    const start = data[0].t as number;
+    const end = data[data.length - 1].t as number;
+    const count = isSmallScreen ? 4 : 7;
+    const ticks: number[] = [];
+    for (let i = 0; i < count; i++) {
+      ticks.push(Math.round(start + ((end - start) * i) / (count - 1)));
+    }
+    return { xDomain: [start, end] as [number, number], xTicks: ticks };
+  }, [data, isSmallScreen]);
+
+  const spanYears = data.length > 1 ? ((data[data.length - 1].t as number) - (data[0].t as number)) / 31557600000 : 0;
+  const formatTick = (t: number) =>
+    new Date(t).toLocaleDateString('en-US', {
+      ...(spanYears > 6 ? {} : { month: 'short' }),
+      year: 'numeric',
+      timeZone: 'UTC',
+    });
+
 
   const latest = priceHistory[priceHistory.length - 1];
   const z = latest ? computeZScore(latest.value, latest.date) : null;
@@ -208,15 +233,17 @@ export function PowerLawChart({ priceHistory }: PowerLawChartProps) {
             />
 
             <XAxis
-              dataKey="date"
+              dataKey="t"
+              type="number"
+              scale="time"
+              domain={xDomain}
+              ticks={xTicks}
               tick={{ fontSize: 10, fill: 'hsl(215, 15%, 55%)' }}
               tickLine={false}
               axisLine={false}
-              tickFormatter={(d: string) =>
-                new Date(d).toLocaleDateString('en-US', { month: 'short', year: '2-digit' })
-              }
-              minTickGap={50}
+              tickFormatter={formatTick}
             />
+
             <YAxis
               tick={{ fontSize: 10, fill: 'hsl(215, 15%, 55%)' }}
               tickLine={false}
@@ -236,7 +263,15 @@ export function PowerLawChart({ priceHistory }: PowerLawChartProps) {
                 fontSize: '11px',
                 color: 'hsl(210, 20%, 92%)',
               }}
-              labelFormatter={(d: string) => new Date(d).toLocaleDateString()}
+              labelFormatter={(t: number) =>
+                new Date(t).toLocaleDateString('en-US', {
+                  year: 'numeric',
+                  month: 'short',
+                  day: 'numeric',
+                  timeZone: 'UTC',
+                })
+              }
+
               formatter={(v: unknown, name: string) => {
                 if (!TOOLTIP_LABELS[name]) return [null, null] as unknown as [string, string];
                 const label = TOOLTIP_LABELS[name];
